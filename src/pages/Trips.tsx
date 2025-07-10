@@ -197,13 +197,16 @@ export default function Trips() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedTrip(selectedTrip === trip.id ? null : trip.id)}
+                      className="text-xs"
                     >
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-4 w-4 mr-1" />
+                      {selectedTrip === trip.id ? 'Dölj karta' : 'Visa på karta'}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => deleteTrip(trip.id!)}
+                      className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -249,14 +252,18 @@ export default function Trips() {
                 )}
 
                 {selectedTrip === trip.id && (
-                  <div className="mt-4">
+                  <div className="mt-4 border-t pt-4">
+                    <div className="flex items-center mb-2">
+                      <MapPin className="h-4 w-4 mr-2 text-primary" />
+                      <span className="font-medium">Sträckning på karta</span>
+                    </div>
                     <MapComponent
                       startLocation={trip.start_location}
                       currentLocation={trip.end_location}
                       route={trip.route_data || []}
-                      height="h-64"
+                      height="h-80"
                       className="w-full"
-                      showNavigation={false}
+                      showNavigation={true}
                     />
                   </div>
                 )}

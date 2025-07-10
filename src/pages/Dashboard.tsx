@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { MapComponent } from '@/components/map/MapComponent';
+import { useTrips } from '@/hooks/useTrips';
 import { 
   MapPin, 
   Clock, 
@@ -14,48 +17,75 @@ import {
 import { NavLink } from 'react-router-dom';
 
 export default function Dashboard() {
-  // Mock data - detta kommer att hämtas från Supabase senare
+  const { trips, loading } = useTrips();
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+
+  // Beräkna statistik från riktiga data
   const stats = {
-    totalTrips: 24,
-    totalDistance: 1245,
-    workTrips: 18,
-    personalTrips: 6,
+    totalTrips: trips.length,
+    totalDistance: trips.reduce((sum, trip) => sum + (trip.distance_km || 0), 0),
+    workTrips: trips.filter(trip => trip.trip_type === 'work').length,
+    personalTrips: trips.filter(trip => trip.trip_type === 'personal').length,
     thisMonth: {
-      trips: 8,
-      distance: 425,
-      workDistance: 320
+      trips: trips.filter(trip => {
+        const tripDate = new Date(trip.created_at || '');
+        const now = new Date();
+        return tripDate.getMonth() === now.getMonth() && tripDate.getFullYear() === now.getFullYear();
+      }).length,
+      distance: trips.filter(trip => {
+        const tripDate = new Date(trip.created_at || '');
+        const now = new Date();
+        return tripDate.getMonth() === now.getMonth() && tripDate.getFullYear() === now.getFullYear();
+      }).reduce((sum, trip) => sum + (trip.distance_km || 0), 0),
+      workDistance: trips.filter(trip => {
+        const tripDate = new Date(trip.created_at || '');
+        const now = new Date();
+        return tripDate.getMonth() === now.getMonth() && 
+               tripDate.getFullYear() === now.getFullYear() && 
+               trip.trip_type === 'work';
+      }).reduce((sum, trip) => sum + (trip.distance_km || 0), 0)
     }
   };
 
-  const recentTrips = [
-    {
-      id: 1,
-      date: '2024-01-10',
-      from: 'Stockholm',
-      to: 'Göteborg',
-      distance: 470,
-      type: 'work' as const,
-      status: 'completed' as const
-    },
-    {
-      id: 2,
-      date: '2024-01-09',
-      from: 'Hem',
-      to: 'ICA Maxi',
-      distance: 12,
-      type: 'personal' as const,
-      status: 'completed' as const
-    },
-    {
-      id: 3,
-      date: '2024-01-08',
-      from: 'Kontor',
-      to: 'Kundmöte',
-      distance: 85,
-      type: 'work' as const,
-      status: 'completed' as const
+  // Ta de 5 senaste resorna
+  const recentTrips = trips.slice(0, 5);
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
     }
-  ];
+    return `${mins}m`;
+  };
+
+  const getTripTypeName = (type: string) => {
+    switch (type) {
+      case 'work':
+        return 'Arbete';
+      case 'personal':
+        return 'Privat';
+      default:
+        return 'Oklart';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-4 lg:p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-muted rounded"></div>
+          <div className="h-4 w-96 bg-muted rounded"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-24 bg-muted rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -141,23 +171,55 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recentTrips.map((trip) => (
-              <div key={trip.id} className="flex items-center justify-between p-3 rounded-lg border">
-                <div className="flex items-center space-x-3">
-                  <Car className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{trip.from} → {trip.to}</p>
-                    <p className="text-sm text-muted-foreground">{trip.date}</p>
+            {recentTrips.length === 0 ? (
+              <div className="text-center py-8">
+                <Car className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">Inga resor registrerade än</p>
+              </div>
+            ) : (
+              recentTrips.map((trip) => (
+                <div 
+                  key={trip.id} 
+                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => setSelectedTrip(selectedTrip === trip.id ? null : trip.id)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Car className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">
+                        {trip.start_location?.address || 'Startpunkt'} → {trip.end_location?.address || 'Slutpunkt'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(trip.created_at || '').toLocaleDateString('sv-SE')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={trip.trip_type === 'work' ? 'default' : 'secondary'}>
+                      {getTripTypeName(trip.trip_type)}
+                    </Badge>
+                    <span className="text-sm font-medium">{trip.distance_km?.toFixed(1) || '0'} km</span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Badge variant={trip.type === 'work' ? 'default' : 'secondary'}>
-                    {trip.type === 'work' ? 'Arbete' : 'Privat'}
-                  </Badge>
-                  <span className="text-sm font-medium">{trip.distance} km</span>
-                </div>
+              ))
+            )}
+            {selectedTrip && (
+              <div className="mt-4">
+                {(() => {
+                  const trip = recentTrips.find(t => t.id === selectedTrip);
+                  return trip ? (
+                    <MapComponent
+                      startLocation={trip.start_location}
+                      currentLocation={trip.end_location}
+                      route={trip.route_data || []}
+                      height="h-64"
+                      className="w-full"
+                      showNavigation={false}
+                    />
+                  ) : null;
+                })()}
               </div>
-            ))}
+            )}
             <NavLink to="/trips">
               <Button variant="outline" className="w-full">
                 Visa alla resor
