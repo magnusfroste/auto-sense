@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,7 @@ interface TripData {
 export default function TripActive() {
   const { toast } = useToast();
   const { saveTrip } = useTrips();
+  const navigate = useNavigate();
   const watchIdRef = useRef<number | null>(null);
   const [trip, setTrip] = useState<TripData>({
     startTime: null,
@@ -245,6 +247,48 @@ export default function TripActive() {
     }
   };
 
+  const saveAndFinish = async () => {
+    if (!trip.endTime || !trip.startTime || !trip.startLocation) {
+      toast({
+        title: 'Kan inte spara resa',
+        description: 'Resan måste vara avslutad för att kunna sparas.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await saveTrip({
+        start_time: trip.startTime.toISOString(),
+        end_time: trip.endTime.toISOString(),
+        start_location: trip.startLocation,
+        end_location: trip.currentLocation || trip.startLocation,
+        distance_km: trip.distance,
+        duration_minutes: Math.floor(trip.duration / 60),
+        trip_type: trip.tripType,
+        trip_status: 'completed',
+        route_data: trip.route,
+        notes: trip.notes
+      });
+
+      toast({
+        title: 'Resa sparad!',
+        description: 'Resan har sparats och du dirigeras tillbaka till dashboard.',
+      });
+
+      // Navigera tillbaka till dashboard efter 1 sekund
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+    } catch (error) {
+      toast({
+        title: 'Fel vid sparande',
+        description: 'Kunde inte spara resan. Försök igen.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -432,6 +476,16 @@ export default function TripActive() {
                 rows={3}
               />
             </div>
+
+            {/* Spara och tillbaka knapp när resan är avslutad */}
+            {trip.endTime && (
+              <div className="pt-4 border-t">
+                <Button onClick={saveAndFinish} className="w-full" size="lg">
+                  <Home className="mr-2 h-4 w-4" />
+                  Spara resa och tillbaka till dashboard
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
