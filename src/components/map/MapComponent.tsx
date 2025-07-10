@@ -14,7 +14,7 @@ interface LocationData {
 interface MapComponentProps {
   currentLocation?: LocationData | null;
   startLocation?: LocationData | null;
-  route?: LocationData[];
+  route?: LocationData[] | any; // Accept both LocationData[] and GeoJSON
   className?: string;
   height?: string;
   showNavigation?: boolean;
@@ -92,6 +92,36 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     };
   }, [token, showNavigation]);
 
+  // Helper function to extract coordinates from route data
+  const getRouteCoordinates = (routeData: any): [number, number][] => {
+    if (!routeData) return [];
+    
+    // If it's already an array of LocationData objects
+    if (Array.isArray(routeData) && routeData.length > 0 && routeData[0].lat !== undefined) {
+      return routeData.map((point: LocationData) => [point.lng, point.lat]);
+    }
+    
+    // If it's GeoJSON FeatureCollection
+    if (routeData.type === 'FeatureCollection' && routeData.features) {
+      const feature = routeData.features[0];
+      if (feature && feature.geometry && feature.geometry.type === 'LineString') {
+        return feature.geometry.coordinates;
+      }
+    }
+    
+    // If it's GeoJSON Feature
+    if (routeData.type === 'Feature' && routeData.geometry && routeData.geometry.type === 'LineString') {
+      return routeData.geometry.coordinates;
+    }
+    
+    // If it's just the geometry part
+    if (routeData.type === 'LineString' && routeData.coordinates) {
+      return routeData.coordinates;
+    }
+    
+    return [];
+  };
+
   // Update markers when locations change
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
@@ -116,30 +146,25 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         .addTo(map.current);
     }
 
-    // Add current location marker
+    // Add current location marker (end location for completed trips)
     if (currentLocation) {
       const currentMarker = new mapboxgl.Marker({ 
-        color: '#3b82f6' // Blue for current
+        color: '#ef4444' // Red for end
       })
         .setLngLat([currentLocation.lng, currentLocation.lat])
-        .setPopup(new mapboxgl.Popup().setHTML('<div><strong>Nuvarande position</strong></div>'))
+        .setPopup(new mapboxgl.Popup().setHTML('<div><strong>Slutpunkt</strong></div>'))
         .addTo(map.current);
-
-      // Center map on current location
-      map.current.flyTo({
-        center: [currentLocation.lng, currentLocation.lat],
-        zoom: 15
-      });
     }
 
     // Add route if available
-    if (route.length > 1) {
+    const coordinates = getRouteCoordinates(route);
+    if (coordinates.length > 1) {
       const routeGeoJSON = {
         type: 'Feature' as const,
         properties: {},
         geometry: {
           type: 'LineString' as const,
-          coordinates: route.map(point => [point.lng, point.lat])
+          coordinates: coordinates
         }
       };
 
@@ -157,15 +182,24 @@ export const MapComponent: React.FC<MapComponentProps> = ({
           'line-cap': 'round'
         },
         paint: {
-          'line-color': '#ef4444', // Red for route
+          'line-color': '#3b82f6', // Blue for route
           'line-width': 4
         }
       });
 
       // Fit map to route bounds
       const bounds = new mapboxgl.LngLatBounds();
-      route.forEach(point => bounds.extend([point.lng, point.lat]));
+      coordinates.forEach(coord => bounds.extend(coord));
       map.current.fitBounds(bounds, { padding: 50 });
+    } else if (startLocation || currentLocation) {
+      // If no route but have locations, center on them
+      const centerLocation = currentLocation || startLocation;
+      if (centerLocation) {
+        map.current.flyTo({
+          center: [centerLocation.lng, centerLocation.lat],
+          zoom: 15
+        });
+      }
     }
   }, [mapLoaded, currentLocation, startLocation, route]);
 
