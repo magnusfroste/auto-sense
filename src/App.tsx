@@ -9,6 +9,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import TripActive from "./pages/TripActive";
+import Trips from "./pages/Trips";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,8 +35,7 @@ const AppContent = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/trip/active" element={<TripActive />} />
-        {/* Temporary routes - will be implemented */}
-        <Route path="/trips" element={<div className="p-6"><h1 className="text-2xl">Mina resor - Kommer snart</h1></div>} />
+        <Route path="/trips" element={<Trips />} />
         <Route path="/reports" element={<div className="p-6"><h1 className="text-2xl">Rapporter - Kommer snart</h1></div>} />
         <Route path="/settings" element={<div className="p-6"><h1 className="text-2xl">Inställningar - Kommer snart</h1></div>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

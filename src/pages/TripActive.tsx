@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { MapComponent } from '@/components/map/MapComponent';
 import { 
   Play, 
   Pause, 
@@ -16,6 +17,7 @@ import {
   Home
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTrips } from '@/hooks/useTrips';
 
 interface LocationData {
   lat: number;
@@ -28,6 +30,7 @@ interface TripData {
   endTime: Date | null;
   startLocation: LocationData | null;
   currentLocation: LocationData | null;
+  route: LocationData[];
   distance: number;
   duration: number;
   status: 'inactive' | 'active' | 'paused';
@@ -37,12 +40,14 @@ interface TripData {
 
 export default function TripActive() {
   const { toast } = useToast();
+  const { saveTrip } = useTrips();
   const watchIdRef = useRef<number | null>(null);
   const [trip, setTrip] = useState<TripData>({
     startTime: null,
     endTime: null,
     startLocation: null,
     currentLocation: null,
+    route: [],
     distance: 0,
     duration: 0,
     status: 'inactive',
@@ -104,6 +109,7 @@ export default function TripActive() {
         startTime: now,
         startLocation: location,
         currentLocation: location,
+        route: [location],
         distance: 0,
         duration: 0
       }));
@@ -132,12 +138,14 @@ export default function TripActive() {
                 return {
                   ...prev,
                   currentLocation: newLocation,
+                  route: [...prev.route, newLocation],
                   distance: prev.distance + distance
                 };
               }
               return {
                 ...prev,
-                currentLocation: newLocation
+                currentLocation: newLocation,
+                route: [newLocation]
               };
             });
           },
@@ -206,12 +214,23 @@ export default function TripActive() {
         currentLocation: location
       }));
 
-      // Här skulle vi spara resan till Supabase
-      console.log('Trip completed:', {
-        ...trip,
-        endTime: now,
-        endLocation: location
-      });
+      // Spara resan till Supabase
+      try {
+        await saveTrip({
+          start_time: trip.startTime!.toISOString(),
+          end_time: now.toISOString(),
+          start_location: trip.startLocation!,
+          end_location: location,
+          distance_km: trip.distance,
+          duration_minutes: Math.floor(trip.duration / 60),
+          trip_type: trip.tripType,
+          trip_status: 'completed',
+          route_data: trip.route,
+          notes: trip.notes
+        });
+      } catch (error) {
+        console.error('Error saving trip:', error);
+      }
 
       toast({
         title: 'Resa avslutad!',
@@ -342,6 +361,28 @@ export default function TripActive() {
               </>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Live Map */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <MapPin className="mr-2 h-5 w-5" />
+            Kartvy
+          </CardTitle>
+          <CardDescription>
+            Realtidsvy av din pågående resa
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MapComponent
+            currentLocation={trip.currentLocation}
+            startLocation={trip.startLocation}
+            route={trip.route}
+            height="h-80"
+            className="w-full"
+          />
         </CardContent>
       </Card>
 
