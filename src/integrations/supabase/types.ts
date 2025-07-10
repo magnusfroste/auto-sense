@@ -735,6 +735,129 @@ export type Database = {
         }
         Relationships: []
       }
+      sense_profiles: {
+        Row: {
+          auto_tracking: boolean | null
+          avatar_url: string | null
+          company: string | null
+          created_at: string
+          default_trip_type: Database["public"]["Enums"]["trip_type"] | null
+          department: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_tracking?: boolean | null
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          default_trip_type?: Database["public"]["Enums"]["trip_type"] | null
+          department?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_tracking?: boolean | null
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          default_trip_type?: Database["public"]["Enums"]["trip_type"] | null
+          department?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sense_trip_exports: {
+        Row: {
+          created_at: string
+          date_from: string
+          date_to: string
+          export_type: string
+          file_url: string | null
+          id: string
+          trip_type: Database["public"]["Enums"]["trip_type"] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_from: string
+          date_to: string
+          export_type: string
+          file_url?: string | null
+          id?: string
+          trip_type?: Database["public"]["Enums"]["trip_type"] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_from?: string
+          date_to?: string
+          export_type?: string
+          file_url?: string | null
+          id?: string
+          trip_type?: Database["public"]["Enums"]["trip_type"] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sense_trips: {
+        Row: {
+          created_at: string
+          distance_km: number | null
+          duration_minutes: number | null
+          end_location: Json | null
+          end_time: string | null
+          id: string
+          notes: string | null
+          route_data: Json | null
+          start_location: Json
+          start_time: string
+          trip_status: Database["public"]["Enums"]["trip_status"] | null
+          trip_type: Database["public"]["Enums"]["trip_type"] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          distance_km?: number | null
+          duration_minutes?: number | null
+          end_location?: Json | null
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          route_data?: Json | null
+          start_location: Json
+          start_time?: string
+          trip_status?: Database["public"]["Enums"]["trip_status"] | null
+          trip_type?: Database["public"]["Enums"]["trip_type"] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          distance_km?: number | null
+          duration_minutes?: number | null
+          end_location?: Json | null
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          route_data?: Json | null
+          start_location?: Json
+          start_time?: string
+          trip_status?: Database["public"]["Enums"]["trip_status"] | null
+          trip_type?: Database["public"]["Enums"]["trip_type"] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       signed_diplomas: {
         Row: {
           blockchain_id: string
@@ -1062,6 +1185,8 @@ export type Database = {
       challenge_status: "pending" | "active" | "completed" | "failed"
       track_difficulty: "easy" | "medium" | "hard" | "expert"
       transaction_type: "income" | "expense" | "transfer"
+      trip_status: "active" | "completed" | "paused"
+      trip_type: "work" | "personal" | "unknown"
       user_type: "content_provider" | "advertiser"
     }
     CompositeTypes: {
@@ -1196,6 +1321,8 @@ export const Constants = {
       challenge_status: ["pending", "active", "completed", "failed"],
       track_difficulty: ["easy", "medium", "hard", "expert"],
       transaction_type: ["income", "expense", "transfer"],
+      trip_status: ["active", "completed", "paused"],
+      trip_type: ["work", "personal", "unknown"],
       user_type: ["content_provider", "advertiser"],
     },
   },

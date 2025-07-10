@@ -28,7 +28,8 @@ export const AuthForm = () => {
     if (error) {
       toast({
         title: 'Inloggning misslyckades',
-        description: error.message,
+        description: error.message === 'Invalid login credentials' ? 
+          'Felaktig e-post eller lösenord.' : error.message,
         variant: 'destructive',
       });
     } else {
@@ -53,6 +54,7 @@ export const AuthForm = () => {
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/`,
         data: {
           full_name: fullName,
         },
@@ -60,9 +62,14 @@ export const AuthForm = () => {
     });
 
     if (error) {
+      let errorMessage = error.message;
+      if (error.message.includes('User already registered')) {
+        errorMessage = 'En användare med denna e-post finns redan. Prova att logga in istället.';
+      }
+      
       toast({
         title: 'Registrering misslyckades',
-        description: error.message,
+        description: errorMessage,
         variant: 'destructive',
       });
     } else {

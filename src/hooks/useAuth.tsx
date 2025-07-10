@@ -46,10 +46,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state changed:', event, session);
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // If user signed up, ensure profile exists in sense_profiles
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(async () => {
+            const { error } = await supabase
+              .from('sense_profiles')
+              .upsert({
+                id: session.user.id,
+                email: session.user.email,
+                full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0]
+              });
+            
+            if (error) {
+              console.error('Error creating profile:', error);
+            }
+          }, 0);
+        }
+        
         setLoading(false);
       }
     );
