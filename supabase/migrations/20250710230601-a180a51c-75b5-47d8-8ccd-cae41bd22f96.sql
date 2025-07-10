@@ -5,7 +5,7 @@ CREATE TYPE public.trip_status AS ENUM ('active', 'completed', 'paused');
 CREATE TYPE public.trip_type AS ENUM ('work', 'personal', 'unknown');
 
 -- Skapa trips tabell för resor
-CREATE TABLE public.trips (
+CREATE TABLE public.sense_trips (
     id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     start_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -23,7 +23,7 @@ CREATE TABLE public.trips (
 );
 
 -- Skapa profiles tabell för användarinformation
-CREATE TABLE public.profiles (
+CREATE TABLE public.sense_profiles (
     id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
     email TEXT,
     full_name TEXT,
@@ -37,7 +37,7 @@ CREATE TABLE public.profiles (
 );
 
 -- Skapa trip_exports tabell för exporterade rapporter
-CREATE TABLE public.trip_exports (
+CREATE TABLE public.sense_trip_exports (
     id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     export_type TEXT NOT NULL, -- 'csv', 'excel', 'pdf'
@@ -49,55 +49,55 @@ CREATE TABLE public.trip_exports (
 );
 
 -- Enable Row Level Security
-ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.trip_exports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sense_trips ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sense_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sense_trip_exports ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies för trips
 CREATE POLICY "Users can view their own trips" 
-ON public.trips 
+ON public.sense_trips 
 FOR SELECT 
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can create their own trips" 
-ON public.trips 
+ON public.sense_trips 
 FOR INSERT 
 WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own trips" 
-ON public.trips 
+ON public.sense_trips 
 FOR UPDATE 
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own trips" 
-ON public.trips 
+ON public.sense_trips 
 FOR DELETE 
 USING (auth.uid() = user_id);
 
 -- RLS policies för profiles
 CREATE POLICY "Users can view their own profile" 
-ON public.profiles 
+ON public.sense_profiles 
 FOR SELECT 
 USING (auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile" 
-ON public.profiles 
+ON public.sense_profiles 
 FOR UPDATE 
 USING (auth.uid() = id);
 
 CREATE POLICY "Users can insert their own profile" 
-ON public.profiles 
+ON public.sense_profiles 
 FOR INSERT 
 WITH CHECK (auth.uid() = id);
 
 -- RLS policies för trip_exports
 CREATE POLICY "Users can view their own exports" 
-ON public.trip_exports 
+ON public.sense_trip_exports 
 FOR SELECT 
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can create their own exports" 
-ON public.trip_exports 
+ON public.sense_trip_exports 
 FOR INSERT 
 WITH CHECK (auth.uid() = user_id);
 
@@ -111,12 +111,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_trips_updated_at
-    BEFORE UPDATE ON public.trips
+    BEFORE UPDATE ON public.sense_trips
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
 CREATE TRIGGER update_profiles_updated_at
-    BEFORE UPDATE ON public.profiles
+    BEFORE UPDATE ON public.sense_profiles
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -124,7 +124,7 @@ CREATE TRIGGER update_profiles_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, email, full_name)
+    INSERT INTO public.sense_profiles (id, email, full_name)
     VALUES (
         NEW.id,
         NEW.email,
@@ -132,7 +132,7 @@ BEGIN
     )
     ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
-        full_name = COALESCE(EXCLUDED.full_name, public.profiles.full_name),
+        full_name = COALESCE(EXCLUDED.full_name, public.sense_profiles.full_name),
         updated_at = NOW();
     RETURN NEW;
 END;
