@@ -1,7 +1,8 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings as SettingsIcon, User, Car } from 'lucide-react';
+import { Settings as SettingsIcon, User, Car, Palette } from 'lucide-react';
 import { VehicleConnectionSection } from '@/components/vehicle/VehicleConnectionSection';
+import { ThemeSelector } from '@/components/settings/ThemeSelector';
 
 export default function Settings() {
   return (
@@ -16,10 +17,14 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile" className="flex items-center space-x-2">
             <User className="h-4 w-4" />
             <span>Profil</span>
+          </TabsTrigger>
+          <TabsTrigger value="appearance" className="flex items-center space-x-2">
+            <Palette className="h-4 w-4" />
+            <span>Utseende</span>
           </TabsTrigger>
           <TabsTrigger value="vehicles" className="flex items-center space-x-2">
             <Car className="h-4 w-4" />
@@ -41,6 +46,10 @@ export default function Settings() {
               </p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="appearance" className="space-y-6">
+          <ThemeSelector />
         </TabsContent>
 
         <TabsContent value="vehicles" className="space-y-6">
