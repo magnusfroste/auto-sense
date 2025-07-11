@@ -25,21 +25,27 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     if (req.method === 'GET') {
+      // Get test mode from query params
+      const url = new URL(req.url)
+      const testMode = url.searchParams.get('test') === 'true'
+      
       // Return OAuth URL for frontend
       const state = crypto.randomUUID()
       const redirectUri = `${supabaseUrl}/functions/v1/smartcar-auth-callback`
       
+      const mode = testMode ? 'test' : 'live'
       const oauthUrl = `https://connect.smartcar.com/oauth/authorize?` +
         `response_type=code&` +
         `client_id=${smartcarClientId}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `scope=read_vehicle_info read_location read_odometer read_fuel&` +
         `state=${state}&` +
-        `mode=live`
+        `mode=${mode}`
 
       return new Response(JSON.stringify({ 
         oauth_url: oauthUrl,
-        state 
+        state,
+        test_mode: testMode
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200

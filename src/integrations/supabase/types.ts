@@ -1076,6 +1076,7 @@ export type Database = {
           distance_meters: number
           elevation_gain_meters: number | null
           id: string
+          is_deleted: boolean
           is_public: boolean
           is_verified: boolean
           max_lat: number
@@ -1095,6 +1096,7 @@ export type Database = {
           distance_meters: number
           elevation_gain_meters?: number | null
           id?: string
+          is_deleted?: boolean
           is_public?: boolean
           is_verified?: boolean
           max_lat: number
@@ -1114,6 +1116,7 @@ export type Database = {
           distance_meters?: number
           elevation_gain_meters?: number | null
           id?: string
+          is_deleted?: boolean
           is_public?: boolean
           is_verified?: boolean
           max_lat?: number

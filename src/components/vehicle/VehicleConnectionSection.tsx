@@ -56,7 +56,7 @@ export const VehicleConnectionSection = () => {
               <p className="text-muted-foreground mb-4">
                 Anslut ditt fordon för att automatiskt spåra dina resor
               </p>
-              <Button onClick={connectVehicle}>
+              <Button onClick={() => connectVehicle()}>
                 <Plus className="mr-2 h-4 w-4" />
                 Anslut fordon
               </Button>
@@ -65,7 +65,7 @@ export const VehicleConnectionSection = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Anslutna fordon ({connections.length})</h3>
-                <Button variant="outline" size="sm" onClick={connectVehicle}>
+                <Button variant="outline" size="sm" onClick={() => connectVehicle()}>
                   <Plus className="mr-2 h-4 w-4" />
                   Anslut fler
                 </Button>
