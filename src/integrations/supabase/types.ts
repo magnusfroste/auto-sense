@@ -814,15 +814,20 @@ export type Database = {
           duration_minutes: number | null
           end_location: Json | null
           end_time: string | null
+          fuel_consumed_liters: number | null
           id: string
+          is_automatic: boolean | null
           notes: string | null
+          odometer_km: number | null
           route_data: Json | null
+          smartcar_trip_id: string | null
           start_location: Json
           start_time: string
           trip_status: Database["public"]["Enums"]["trip_status"] | null
           trip_type: Database["public"]["Enums"]["trip_type"] | null
           updated_at: string
           user_id: string
+          vehicle_connection_id: string | null
         }
         Insert: {
           created_at?: string
@@ -830,15 +835,20 @@ export type Database = {
           duration_minutes?: number | null
           end_location?: Json | null
           end_time?: string | null
+          fuel_consumed_liters?: number | null
           id?: string
+          is_automatic?: boolean | null
           notes?: string | null
+          odometer_km?: number | null
           route_data?: Json | null
+          smartcar_trip_id?: string | null
           start_location: Json
           start_time?: string
           trip_status?: Database["public"]["Enums"]["trip_status"] | null
           trip_type?: Database["public"]["Enums"]["trip_type"] | null
           updated_at?: string
           user_id: string
+          vehicle_connection_id?: string | null
         }
         Update: {
           created_at?: string
@@ -846,17 +856,30 @@ export type Database = {
           duration_minutes?: number | null
           end_location?: Json | null
           end_time?: string | null
+          fuel_consumed_liters?: number | null
           id?: string
+          is_automatic?: boolean | null
           notes?: string | null
+          odometer_km?: number | null
           route_data?: Json | null
+          smartcar_trip_id?: string | null
           start_location?: Json
           start_time?: string
           trip_status?: Database["public"]["Enums"]["trip_status"] | null
           trip_type?: Database["public"]["Enums"]["trip_type"] | null
           updated_at?: string
           user_id?: string
+          vehicle_connection_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sense_trips_vehicle_connection_id_fkey"
+            columns: ["vehicle_connection_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signed_diplomas: {
         Row: {
@@ -1130,6 +1153,60 @@ export type Database = {
           storage_used_mb?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      vehicle_connections: {
+        Row: {
+          access_token: string
+          connected_at: string
+          created_at: string
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          make: string | null
+          model: string | null
+          refresh_token: string
+          smartcar_vehicle_id: string
+          updated_at: string
+          user_id: string
+          vehicle_id: string
+          vin: string | null
+          year: number | null
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          make?: string | null
+          model?: string | null
+          refresh_token: string
+          smartcar_vehicle_id: string
+          updated_at?: string
+          user_id: string
+          vehicle_id: string
+          vin?: string | null
+          year?: number | null
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          make?: string | null
+          model?: string | null
+          refresh_token?: string
+          smartcar_vehicle_id?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_id?: string
+          vin?: string | null
+          year?: number | null
         }
         Relationships: []
       }
