@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Car, TestTube, Zap, Database } from "lucide-react";
+import { useVehicleConnections } from "@/hooks/useVehicleConnections";
+import { Car, TestTube, Zap, Database, Plus } from "lucide-react";
 
 export function DeveloperSection() {
   const [testMode, setTestMode] = useState(false);
@@ -17,6 +18,7 @@ export function DeveloperSection() {
   const [tripCount, setTripCount] = useState('5');
   const { user } = useAuth();
   const { toast } = useToast();
+  const { connectVehicle } = useVehicleConnections();
 
   const generateTestTrips = async () => {
     if (!user) return;
@@ -82,6 +84,34 @@ export function DeveloperSection() {
               </Badge>
             </div>
           </div>
+
+          {/* Smartcar Test Vehicle Connection */}
+          {testMode && (
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <Car className="h-4 w-4" />
+                <Label className="text-sm font-medium">Smartcar testfordon</Label>
+              </div>
+              
+              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                <div className="text-sm text-muted-foreground">
+                  Anslut Smartcar's simulerade testfordon med dessa credentials:
+                </div>
+                <div className="grid grid-cols-1 gap-2 text-xs font-mono">
+                  <div>Email: <span className="bg-background px-2 py-1 rounded">HNV3QzNDL6@simulated.com</span></div>
+                  <div>Password: <span className="bg-background px-2 py-1 rounded">E5gXF8aBzkqz</span></div>
+                </div>
+                <Button 
+                  onClick={() => connectVehicle(true)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Anslut Smartcar testfordon
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Test Trip Generator */}
           <div className="space-y-4 pt-4 border-t">
