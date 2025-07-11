@@ -5,17 +5,21 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVehicleConnections } from "@/hooks/useVehicleConnections";
-import { Car, TestTube, Zap, Database, Plus } from "lucide-react";
+import { Car, TestTube, Zap, Database, Plus, Key } from "lucide-react";
 
 export function DeveloperSection() {
   const [testMode, setTestMode] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [tripType, setTripType] = useState<'work' | 'personal' | 'random'>('random');
   const [tripCount, setTripCount] = useState('5');
+  const [testEmail, setTestEmail] = useState('');
+  const [testPassword, setTestPassword] = useState('');
+  const [connecting, setConnecting] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const { connectVehicle } = useVehicleConnections();
@@ -49,6 +53,41 @@ export function DeveloperSection() {
       });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const connectTestVehicle = async () => {
+    if (!testEmail.trim() || !testPassword.trim()) {
+      toast({
+        title: "Fyll i credentials",
+        description: "Både e-post och lösenord krävs för testfordonet",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      // Store test credentials temporarily for the OAuth flow
+      sessionStorage.setItem('smartcar_test_email', testEmail);
+      sessionStorage.setItem('smartcar_test_password', testPassword);
+      
+      await connectVehicle(true);
+      
+      toast({
+        title: "OAuth-flöde startat",
+        description: `Använd ${testEmail} för att logga in i Smartcar testmiljön`
+      });
+      
+    } catch (error: any) {
+      console.error('Error connecting test vehicle:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte starta testfordonsanslutning",
+        variant: "destructive"
+      });
+    } finally {
+      setConnecting(false);
     }
   };
 
@@ -89,26 +128,51 @@ export function DeveloperSection() {
           {testMode && (
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center gap-2">
-                <Car className="h-4 w-4" />
-                <Label className="text-sm font-medium">Smartcar testfordon</Label>
+                <Key className="h-4 w-4" />
+                <Label className="text-sm font-medium">Smartcar testfordon credentials</Label>
               </div>
               
-              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+              <div className="p-4 bg-muted/50 rounded-lg space-y-4">
                 <div className="text-sm text-muted-foreground">
-                  Anslut Smartcar's simulerade testfordon med dessa credentials:
+                  Ange e-post och lösenord för det Smartcar testfordon du vill ansluta:
                 </div>
-                <div className="grid grid-cols-1 gap-2 text-xs font-mono">
-                  <div>Email: <span className="bg-background px-2 py-1 rounded">HNV3QzNDL6@simulated.com</span></div>
-                  <div>Password: <span className="bg-background px-2 py-1 rounded">E5gXF8aBzkqz</span></div>
+                
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="test-email">E-post</Label>
+                    <Input
+                      id="test-email"
+                      type="email"
+                      placeholder="exempel@simulated.com"
+                      value={testEmail}
+                      onChange={(e) => setTestEmail(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="test-password">Lösenord</Label>
+                    <Input
+                      id="test-password"
+                      type="password"
+                      placeholder="Testfordonets lösenord"
+                      value={testPassword}
+                      onChange={(e) => setTestPassword(e.target.value)}
+                    />
+                  </div>
                 </div>
+                
                 <Button 
-                  onClick={() => connectVehicle(true)}
-                  variant="outline"
+                  onClick={connectTestVehicle}
+                  disabled={connecting || !testEmail.trim() || !testPassword.trim()}
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Anslut Smartcar testfordon
+                  {connecting ? "Ansluter..." : "Anslut testfordon"}
                 </Button>
+                
+                <div className="text-xs text-muted-foreground">
+                  <strong>Tips:</strong> Du hittar testfordon credentials i din Smartcar dashboard under "Test Vehicles"
+                </div>
               </div>
             </div>
           )}
