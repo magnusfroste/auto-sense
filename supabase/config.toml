@@ -1,1 +1,10 @@
 project_id = "umjqoizuhfrxzjgrdvei"
+
+[functions.smartcar-auth]
+verify_jwt = false
+
+[functions.smartcar-auth-callback]
+verify_jwt = false
+
+[functions.smartcar-webhook]
+verify_jwt = false
