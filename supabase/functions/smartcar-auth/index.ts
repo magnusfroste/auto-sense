@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
         `response_type=code&` +
         `client_id=${smartcarClientId}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `scope=read_vehicle_info:read_location:read_odometer:read_fuel&` +
+        `scope=read_vehicle_info read_location read_odometer read_fuel&` +
         `state=${state}&` +
         `mode=live`
 
