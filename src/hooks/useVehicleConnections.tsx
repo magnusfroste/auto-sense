@@ -184,6 +184,8 @@ export const useVehicleConnections = () => {
 
   // Handle OAuth callback
   useEffect(() => {
+    console.log('🔧 MESSAGE LISTENER: Adding message event listener');
+    
     const handleMessage = async (event: MessageEvent) => {
       console.log('🔍 RAW MESSAGE EVENT:', {
         origin: event.origin,
