@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import TripActive from "./pages/TripActive";
 import Trips from "./pages/Trips";
 import Settings from "./pages/Settings";
+import SmartcarTest from "./pages/SmartcarTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const AppContent = () => {
         <Route path="/trips" element={<Trips />} />
         <Route path="/reports" element={<div className="p-6"><h1 className="text-2xl">Rapporter - Kommer snart</h1></div>} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/smartcar-test" element={<SmartcarTest />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
