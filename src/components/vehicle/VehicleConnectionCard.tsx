@@ -72,7 +72,8 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
 
       if (error) throw error;
       
-      setVehicleData(data);
+      console.log('Received vehicle data:', data);
+      setVehicleData(data?.data || data);
       setLastUpdated(new Date());
     } catch (error: any) {
       console.error('Error fetching vehicle data:', error);
