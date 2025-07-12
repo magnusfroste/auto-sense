@@ -8,6 +8,7 @@ interface VehicleConnection {
   user_id: string;
   vehicle_id: string;
   smartcar_vehicle_id: string;
+  access_token: string;
   make?: string;
   model?: string;
   year?: number;
@@ -29,7 +30,7 @@ export const useVehicleConnections = () => {
     try {
       const { data, error } = await supabase
         .from('vehicle_connections')
-        .select('*')
+        .select('id, user_id, vehicle_id, smartcar_vehicle_id, access_token, make, model, year, vin, is_active, connected_at, last_sync_at')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('connected_at', { ascending: false });

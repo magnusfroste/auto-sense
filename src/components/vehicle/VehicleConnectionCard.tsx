@@ -1,8 +1,10 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, Unplug, Calendar, Activity } from 'lucide-react';
+import { Car, Unplug, Calendar, Activity, Play, Pause, MapPin, Gauge, Fuel, Info } from 'lucide-react';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VehicleConnection {
   id: string;
@@ -13,6 +15,26 @@ interface VehicleConnection {
   connected_at: string;
   last_sync_at?: string;
   is_active: boolean;
+  access_token: string;
+  smartcar_vehicle_id: string;
+}
+
+interface VehicleData {
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
+  odometer?: {
+    distance: number;
+  };
+  fuel?: {
+    percent: number;
+  };
+  info?: {
+    make: string;
+    model: string;
+    year: number;
+  };
 }
 
 interface VehicleConnectionCardProps {
@@ -21,6 +43,10 @@ interface VehicleConnectionCardProps {
 
 export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps) => {
   const { disconnectVehicle } = useVehicleConnections();
+  const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
@@ -32,7 +58,57 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
     });
   };
 
+  const fetchVehicleData = useCallback(async () => {
+    if (!connection.access_token || !connection.smartcar_vehicle_id) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('smartcar-vehicle-data', {
+        body: {
+          vehicleId: connection.smartcar_vehicle_id,
+          accessToken: connection.access_token
+        }
+      });
+
+      if (error) throw error;
+      
+      setVehicleData(data);
+      setLastUpdated(new Date());
+    } catch (error: any) {
+      console.error('Error fetching vehicle data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [connection.access_token, connection.smartcar_vehicle_id]);
+
+  const startPolling = useCallback(() => {
+    setIsPolling(true);
+    fetchVehicleData();
+  }, [fetchVehicleData]);
+
+  const stopPolling = useCallback(() => {
+    setIsPolling(false);
+  }, []);
+
+  // Set up polling interval
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isPolling) {
+      interval = setInterval(() => {
+        fetchVehicleData();
+      }, 30000); // Poll every 30 seconds
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPolling, fetchVehicleData]);
+
   const getVehicleName = () => {
+    if (vehicleData?.info) {
+      return `${vehicleData.info.make} ${vehicleData.info.model} (${vehicleData.info.year})`;
+    }
     if (connection.make && connection.model && connection.year) {
       return `${connection.make} ${connection.model} (${connection.year})`;
     }
@@ -79,7 +155,84 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
           </div>
         )}
 
-        <div className="pt-2">
+        {/* Live Vehicle Data */}
+        {vehicleData && (
+          <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Live Data
+              </h4>
+              {lastUpdated && (
+                <span className="text-xs text-muted-foreground">
+                  {lastUpdated.toLocaleTimeString('sv-SE')}
+                </span>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {vehicleData.location && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs">
+                    {vehicleData.location.latitude.toFixed(4)}, {vehicleData.location.longitude.toFixed(4)}
+                  </span>
+                </div>
+              )}
+              
+              {vehicleData.odometer && (
+                <div className="flex items-center gap-2">
+                  <Gauge className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs">
+                    {(vehicleData.odometer.distance / 1000).toFixed(0)} km
+                  </span>
+                </div>
+              )}
+              
+              {vehicleData.fuel && (
+                <div className="flex items-center gap-2">
+                  <Fuel className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs">
+                    {(vehicleData.fuel.percent * 100).toFixed(0)}%
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="pt-2 space-y-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={isPolling ? stopPolling : startPolling}
+              disabled={loading}
+              className="flex-1"
+            >
+              {isPolling ? (
+                <>
+                  <Pause className="mr-2 h-4 w-4" />
+                  Stoppa polling
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Starta polling
+                </>
+              )}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchVehicleData}
+              disabled={loading || isPolling}
+            >
+              <Info className="h-4 w-4" />
+            </Button>
+          </div>
+          
           <Button
             variant="outline"
             size="sm"
