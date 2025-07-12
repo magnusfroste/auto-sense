@@ -40,11 +40,20 @@ export default function SmartcarTest() {
 
       if (data?.oauth_url) {
         // Open popup window for OAuth
+        console.log('🪟 Opening popup for OAuth...');
         const popup = window.open(
           data.oauth_url,
           'smartcar-oauth',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
+          'width=600,height=700,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
         );
+
+        if (!popup) {
+          setTestResult({
+            success: false,
+            message: 'Popup blockerat av webbläsaren'
+          });
+          return;
+        }
 
         // Listen for OAuth completion
         const handleMessage = async (event: MessageEvent) => {
@@ -113,10 +122,12 @@ export default function SmartcarTest() {
 
         window.addEventListener('message', handleMessage);
 
-        // Check if popup was closed manually
-        const checkClosed = setInterval(() => {
+        // Enhanced popup monitoring
+        let popupCheckInterval: NodeJS.Timeout;
+        const checkPopup = () => {
           if (popup?.closed) {
-            clearInterval(checkClosed);
+            console.log('🪟 Popup stängd');
+            clearInterval(popupCheckInterval);
             window.removeEventListener('message', handleMessage);
             if (!testResult) {
               setTestResult({
@@ -125,8 +136,21 @@ export default function SmartcarTest() {
               });
             }
             setIsConnecting(false);
+          } else {
+            console.log('🪟 Popup fortfarande öppen...');
           }
-        }, 1000);
+        };
+        
+        // Check popup status every 2 seconds
+        popupCheckInterval = setInterval(checkPopup, 2000);
+        
+        // Also set a timeout as fallback
+        setTimeout(() => {
+          if (popupCheckInterval) {
+            clearInterval(popupCheckInterval);
+          }
+          setIsConnecting(false);
+        }, 60000); // 60 second timeout
 
       } else {
         setTestResult({
