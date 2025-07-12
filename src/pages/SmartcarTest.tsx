@@ -47,22 +47,58 @@ export default function SmartcarTest() {
         );
 
         // Listen for OAuth completion
-        const handleMessage = (event: MessageEvent) => {
+        const handleMessage = async (event: MessageEvent) => {
           console.log('📨 Test page received message:', event.data);
 
           if (event.data?.type === 'SMARTCAR_AUTH_SUCCESS') {
-            console.log('🎉 OAuth success in test page!');
-            setTestResult({
-              success: true,
-              message: 'OAuth flow completed successfully!',
-              data: event.data
-            });
+            console.log('🎉 OAuth success in test page, exchanging code for tokens...');
+            
+            try {
+              // Get current user
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) {
+                throw new Error('No authenticated user found');
+              }
+
+              // Exchange code for tokens using POST endpoint
+              const { data: tokenData, error: tokenError } = await supabase.functions.invoke('smartcar-auth', {
+                method: 'POST',
+                body: {
+                  code: event.data.code,
+                  user_id: user.id,
+                  test: true
+                }
+              });
+
+              if (tokenError) {
+                console.error('❌ Token exchange error:', tokenError);
+                setTestResult({
+                  success: false,
+                  message: `Token exchange failed: ${tokenError.message}`
+                });
+                return;
+              }
+
+              console.log('✅ Token exchange successful:', tokenData);
+              setTestResult({
+                success: true,
+                message: `Vehicle connection successful! Stored ${tokenData.connections_stored} connections.`,
+                data: tokenData
+              });
+              
+            } catch (error: any) {
+              console.error('💥 Error during token exchange:', error);
+              setTestResult({
+                success: false,
+                message: `Token exchange error: ${error.message}`
+              });
+            }
             
             window.removeEventListener('message', handleMessage);
             
             toast({
               title: "Test lyckades!",
-              description: "Smartcar OAuth flow fungerar",
+              description: "Smartcar OAuth flow och token exchange fungerar",
             });
           }
         };
