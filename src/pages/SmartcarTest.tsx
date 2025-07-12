@@ -96,10 +96,19 @@ export default function SmartcarTest() {
 
   const handleTestConnection = async () => {
     console.log('🧪 Starting Smartcar test connection...');
+    console.log('🖥️ Platform: Mac Chrome - Using full page redirect to avoid CSP issues');
     setIsConnecting(true);
     setTestResult(null);
 
     try {
+      // Clear any cached content first (Mac Chrome specific)
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      }
+
       // Call Smartcar auth edge function to get OAuth URL
       const { data, error } = await supabase.functions.invoke('smartcar-auth?test=true', {
         method: 'GET'
@@ -117,8 +126,14 @@ export default function SmartcarTest() {
       console.log('✅ Smartcar auth response:', data);
 
       if (data?.oauth_url) {
-        // Use direct redirect instead of popup (like Smartcar's official approach)
-        console.log('🔀 Redirecting to OAuth URL...');
+        // Use direct redirect - this should NOT trigger CSP errors
+        console.log('🔀 Performing FULL PAGE REDIRECT (no popup/iframe)');
+        console.log('🔗 OAuth URL:', data.oauth_url);
+        
+        // Add small delay to ensure console logs are visible
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Force full page navigation (should work on Mac Chrome)
         window.location.href = data.oauth_url;
         return;
       } else {
