@@ -37,20 +37,9 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     if (req.method === 'GET') {
-      // Parse request body for test mode parameter
-      let testMode = false;
-      try {
-        if (req.body) {
-          const body = await req.json();
-          testMode = body.test === true;
-          console.log('GET request body:', body);
-        }
-      } catch (e) {
-        // Try query params as fallback
-        const url = new URL(req.url)
-        testMode = url.searchParams.get('test') === 'true'
-        console.log('Using query params for test mode:', testMode);
-      }
+      // Get test mode from query params
+      const url = new URL(req.url)
+      const testMode = url.searchParams.get('test') === 'true'
       
       console.log('GET request for OAuth URL, test mode:', testMode)
       
