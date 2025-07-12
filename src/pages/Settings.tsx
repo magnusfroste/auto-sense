@@ -4,6 +4,7 @@ import { Settings as SettingsIcon, User, Car, Palette, Code } from 'lucide-react
 import { VehicleConnectionSection } from '@/components/vehicle/VehicleConnectionSection';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { DeveloperSection } from '@/components/settings/DeveloperSection';
+import { TrackingModeSelector } from '@/components/settings/TrackingModeSelector';
 
 export default function Settings() {
   return (
@@ -55,6 +56,7 @@ export default function Settings() {
 
         <TabsContent value="appearance" className="space-y-6">
           <ThemeSelector />
+          <TrackingModeSelector />
         </TabsContent>
 
         <TabsContent value="vehicles" className="space-y-6">

@@ -9,7 +9,7 @@ import { AuthForm } from "./components/auth/AuthForm";
 import { AppLayout } from "./components/layout/AppLayout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
-import TripActiveHybrid from "./pages/TripActiveHybrid";
+import TripActiveSimple from "./pages/TripActiveSimple";
 import Trips from "./pages/Trips";
 import Settings from "./pages/Settings";
 import SmartcarTest from "./pages/SmartcarTest";
@@ -37,7 +37,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/trip/active" element={<TripActiveHybrid />} />
+        <Route path="/trip/active" element={<TripActiveSimple />} />
         <Route path="/trips" element={<Trips />} />
         <Route path="/reports" element={<div className="p-6"><h1 className="text-2xl">Rapporter - Kommer snart</h1></div>} />
         <Route path="/settings" element={<Settings />} />
