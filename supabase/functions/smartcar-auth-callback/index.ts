@@ -114,19 +114,41 @@ Deno.serve(async (req) => {
           <p><small>Slutför anslutning...</small></p>
         </div>
         <script>
-          // Enhanced message posting with retries and confirmation
+          // Enhanced message posting with better targeting
           function postOAuthMessage() {
             if (window.opener && !window.opener.closed) {
               console.log('Sending OAuth success message to parent...');
-              window.opener.postMessage({
+              console.log('Parent origin:', window.opener.location.origin);
+              
+              const message = {
                 type: 'SMARTCAR_AUTH_SUCCESS',
                 code: '${code}',
                 state: '${state}',
                 timestamp: new Date().toISOString()
-              }, '*');
+              };
+              
+              console.log('Sending message:', message);
+              
+              // Try multiple target origins
+              const targetOrigins = [
+                'https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com',
+                '*'
+              ];
+              
+              targetOrigins.forEach(origin => {
+                try {
+                  window.opener.postMessage(message, origin);
+                  console.log('Message sent to origin:', origin);
+                } catch (e) {
+                  console.warn('Failed to send to origin:', origin, e);
+                }
+              });
+              
               return true;
+            } else {
+              console.warn('No valid parent window found');
+              return false;
             }
-            return false;
           }
           
           // Send message immediately
