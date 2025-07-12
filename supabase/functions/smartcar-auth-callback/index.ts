@@ -114,19 +114,43 @@ Deno.serve(async (req) => {
           <p><small>Slutför anslutning...</small></p>
         </div>
         <script>
-          // Post message to parent window with auth data
-          if (window.opener) {
-            window.opener.postMessage({
-              type: 'SMARTCAR_AUTH_SUCCESS',
-              code: '${code}',
-              state: '${state}'
-            }, '*');
+          // Enhanced message posting with retries and confirmation
+          function postOAuthMessage() {
+            if (window.opener && !window.opener.closed) {
+              console.log('Sending OAuth success message to parent...');
+              window.opener.postMessage({
+                type: 'SMARTCAR_AUTH_SUCCESS',
+                code: '${code}',
+                state: '${state}',
+                timestamp: new Date().toISOString()
+              }, '*');
+              return true;
+            }
+            return false;
           }
           
-          // Close window after short delay
+          // Send message immediately
+          let messageSent = postOAuthMessage();
+          
+          // Retry mechanism for message delivery
+          if (!messageSent) {
+            let retryCount = 0;
+            const retryInterval = setInterval(() => {
+              retryCount++;
+              console.log('Retrying message send, attempt:', retryCount);
+              
+              if (postOAuthMessage() || retryCount >= 5) {
+                clearInterval(retryInterval);
+                console.log('Message delivery completed or max retries reached');
+              }
+            }, 200);
+          }
+          
+          // Close window after longer delay to ensure message delivery
           setTimeout(() => {
+            console.log('Closing OAuth popup...');
             window.close();
-          }, 2000);
+          }, 3000);
         </script>
       </body>
       </html>

@@ -98,19 +98,33 @@ export const useVehicleConnections = () => {
 
       console.log('OAuth popup opened, waiting for completion...');
 
-      // Listen for popup completion with timeout
+      // Track OAuth completion status
+      let oauthCompleted = false;
+      const markOAuthCompleted = () => {
+        oauthCompleted = true;
+        console.log('✅ OAuth marked as completed, cleaning up popup monitoring...');
+      };
+      
+      // Store completion marker for message handler to use
+      (window as any).markSmartcarOAuthCompleted = markOAuthCompleted;
+
+      // Monitor popup closure (backup only, message is primary)
       let timeoutId: NodeJS.Timeout;
       const checkClosed = setInterval(() => {
         if (popup?.closed) {
           clearInterval(checkClosed);
           clearTimeout(timeoutId);
-          console.log('Popup closed, checking for connection...');
-          // Check if connection was successful
-          setTimeout(() => {
-            fetchConnections();
-          }, 1000);
+          console.log('Popup closed, OAuth completed:', oauthCompleted);
+          
+          // Only check for fallback connection if OAuth not completed via message
+          if (!oauthCompleted) {
+            console.log('⚠️ Popup closed without OAuth completion message, checking for fallback...');
+            setTimeout(() => {
+              fetchConnections();
+            }, 500);
+          }
         }
-      }, 1000);
+      }, 500); // Check more frequently
 
       // Add timeout after 5 minutes
       timeoutId = setTimeout(() => {
@@ -124,6 +138,8 @@ export const useVehicleConnections = () => {
             variant: "destructive"
           });
         }
+        // Clean up global function
+        delete (window as any).markSmartcarOAuthCompleted;
       }, 300000); // 5 minutes
 
     } catch (error: any) {
@@ -228,7 +244,7 @@ export const useVehicleConnections = () => {
       const userId = localStorage.getItem('smartcar_user_id');
       const testMode = localStorage.getItem('smartcar_test_mode') === 'true';
 
-      console.log('Processing OAuth success:', { 
+      console.log('🎯 Processing OAuth success via MESSAGE (primary path):', { 
         code: code?.substring(0, 10) + '...', 
         state, 
         storedState, 
@@ -236,6 +252,11 @@ export const useVehicleConnections = () => {
         testMode,
         stateMatch: state === storedState
       });
+
+      // Mark OAuth as completed via message to prevent fallback
+      if (typeof (window as any).markSmartcarOAuthCompleted === 'function') {
+        (window as any).markSmartcarOAuthCompleted();
+      }
 
       if (!code || !state) {
         console.error('Missing code or state in OAuth callback');
