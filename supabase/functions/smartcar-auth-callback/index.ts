@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
               type: 'SMARTCAR_AUTH_SUCCESS',
               code: '${code}',
               state: '${state}'
-            }, window.location.origin);
+            }, '*');
           }
           
           // Close window after short delay
