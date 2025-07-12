@@ -22,9 +22,9 @@ export default function SmartcarTest() {
     setTestResult(null);
 
     try {
-      // Call Smartcar auth edge function
-      const { data, error } = await supabase.functions.invoke('smartcar-auth', {
-        body: { test: true }
+      // Call Smartcar auth edge function to get OAuth URL
+      const { data, error } = await supabase.functions.invoke('smartcar-auth?test=true', {
+        method: 'GET'
       });
 
       if (error) {
@@ -38,10 +38,10 @@ export default function SmartcarTest() {
 
       console.log('✅ Smartcar auth response:', data);
 
-      if (data?.authUrl) {
+      if (data?.oauth_url) {
         // Open popup window for OAuth
         const popup = window.open(
-          data.authUrl,
+          data.oauth_url,
           'smartcar-oauth',
           'width=500,height=600,scrollbars=yes,resizable=yes'
         );
@@ -87,7 +87,7 @@ export default function SmartcarTest() {
       } else {
         setTestResult({
           success: false,
-          message: 'Ingen authUrl returnerad från edge function'
+          message: 'Ingen oauth_url returnerad från edge function'
         });
       }
 
