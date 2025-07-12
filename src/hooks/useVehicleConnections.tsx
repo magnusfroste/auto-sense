@@ -128,24 +128,35 @@ export const useVehicleConnections = () => {
   // Handle OAuth callback
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      console.log('Received message:', event.data);
+      
+      if (event.origin !== window.location.origin) {
+        console.log('Wrong origin:', event.origin, 'expected:', window.location.origin);
+        return;
+      }
       
       if (event.data.type === 'SMARTCAR_AUTH_SUCCESS') {
         const { code, state } = event.data;
         const storedState = localStorage.getItem('smartcar_state');
         const userId = localStorage.getItem('smartcar_user_id');
 
+        console.log('OAuth callback received:', { code, state, storedState, userId });
+
         if (state === storedState && userId) {
           try {
-            const { error } = await supabase.functions.invoke('smartcar-auth', {
+            console.log('Making POST request to complete OAuth...');
+            const { data, error } = await supabase.functions.invoke('smartcar-auth', {
               body: { code, user_id: userId }
             });
+
+            console.log('POST response:', { data, error });
 
             if (error) throw error;
 
             localStorage.removeItem('smartcar_state');
             localStorage.removeItem('smartcar_user_id');
             
+            console.log('Fetching updated connections...');
             await fetchConnections();
             
             toast({
@@ -160,6 +171,8 @@ export const useVehicleConnections = () => {
               variant: "destructive"
             });
           }
+        } else {
+          console.log('State mismatch or missing userId:', { state, storedState, userId });
         }
       }
     };
