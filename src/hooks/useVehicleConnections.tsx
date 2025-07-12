@@ -238,6 +238,12 @@ export const useVehicleConnections = () => {
       } else {
         console.log('⚠️ Non-object message:', typeof event.data, event.data);
       }
+      
+      // EXTRA DEBUG: Check for any message that might contain OAuth data
+      if (event.data && (JSON.stringify(event.data).includes('SMARTCAR_AUTH_SUCCESS') || 
+          JSON.stringify(event.data).includes('b0f3e9ff-5695-4ee9-bb67-b3fe1f5f7e36'))) {
+        console.log('🔍 FOUND POTENTIAL SMARTCAR DATA IN MESSAGE:', event.data);
+      }
     };
 
     const handleOAuthSuccess = async (data: any) => {
