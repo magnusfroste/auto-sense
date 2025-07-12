@@ -55,17 +55,28 @@ export default function SmartcarTest() {
           return;
         }
 
-        // Listen for OAuth completion
+        // Listen for OAuth completion - more permissive filtering
         const handleMessage = async (event: MessageEvent) => {
-          // Filter out MetaMask and other irrelevant messages
-          if (!event.data || typeof event.data !== 'object' || event.data.target === 'metamask-inpage') {
+          // Log ALL messages for debugging
+          console.log('📨 Received message from:', event.origin, 'data:', event.data);
+
+          // Accept messages from any origin for testing (more permissive)
+          if (!event.data || typeof event.data !== 'object') {
+            console.log('🚫 Ignoring non-object message');
             return;
           }
 
-          console.log('📨 Test page received relevant message:', event.data);
+          // Filter out known irrelevant messages
+          if (event.data.target === 'metamask-inpage' || 
+              event.data.type === 'webpackWarnings' ||
+              event.data.type === 'webpackErrors') {
+            return;
+          }
+
+          console.log('📨 Processing message:', event.data);
 
           if (event.data?.type === 'SMARTCAR_AUTH_SUCCESS') {
-            console.log('🎉 OAuth success in test page, exchanging code for tokens...');
+            console.log('🎉 OAuth success detected! Code:', event.data.code?.substring(0, 10) + '...');
             
             try {
               // Get current user
@@ -75,7 +86,6 @@ export default function SmartcarTest() {
               }
 
               console.log('👤 Current user:', user.id);
-              console.log('🔑 Authorization code:', event.data.code?.substring(0, 10) + '...');
 
               // Exchange code for tokens using POST endpoint
               const { data: tokenData, error: tokenError } = await supabase.functions.invoke('smartcar-auth', {
