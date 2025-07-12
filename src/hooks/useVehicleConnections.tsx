@@ -130,10 +130,11 @@ export const useVehicleConnections = () => {
     const handleMessage = async (event: MessageEvent) => {
       console.log('Received message:', event.data);
       
-      if (event.origin !== window.location.origin) {
-        console.log('Wrong origin:', event.origin, 'expected:', window.location.origin);
-        return;
-      }
+      // Accept messages from any origin for Smartcar OAuth
+      // if (event.origin !== window.location.origin) {
+      //   console.log('Wrong origin:', event.origin, 'expected:', window.location.origin);
+      //   return;
+      // }
       
       if (event.data.type === 'SMARTCAR_AUTH_SUCCESS') {
         const { code, state } = event.data;
