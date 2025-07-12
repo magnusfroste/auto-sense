@@ -8,6 +8,7 @@ const corsHeaders = {
 interface SmartcarAuthRequest {
   code: string
   user_id: string
+  test?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -25,9 +26,20 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     if (req.method === 'GET') {
-      // Get test mode from query params
+      // Get test mode from query params or body
       const url = new URL(req.url)
-      const testMode = url.searchParams.get('test') === 'true'
+      let testMode = url.searchParams.get('test') === 'true'
+      
+      // If request has body, also check for test mode there
+      const bodyText = await req.text()
+      if (bodyText) {
+        try {
+          const bodyData = JSON.parse(bodyText)
+          testMode = testMode || bodyData.test === true
+        } catch (e) {
+          // Ignore JSON parse errors for GET requests
+        }
+      }
       
       // Return OAuth URL for frontend
       const state = crypto.randomUUID()
