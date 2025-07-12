@@ -169,33 +169,56 @@ export const useVehicleConnections = () => {
   // Handle OAuth callback
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
+      console.log('🔍 RAW MESSAGE EVENT:', {
+        origin: event.origin,
+        dataType: typeof event.data,
+        data: event.data,
+        stringifiedData: JSON.stringify(event.data),
+        timestamp: new Date().toISOString()
+      });
+
       // Filter out MetaMask and other unwanted messages
       if (event.data?.target === 'metamask-inpage' || 
-          event.data?.name === 'metamask-provider') {
-        return; // Ignore MetaMask messages
+          event.data?.name === 'metamask-provider' ||
+          event.data?.type === 'metamask_chainChanged' ||
+          event.data?.type === 'metamask_accountsChanged') {
+        console.log('🚫 FILTERED OUT:', event.data?.target || event.data?.name || event.data?.type);
+        return;
       }
 
-      console.log('Filtered message event received:', {
+      console.log('✅ PROCESSING MESSAGE:', {
         origin: event.origin,
         data: event.data,
         type: typeof event.data,
         hasType: event.data?.type,
         hasCode: !!event.data?.code,
-        hasState: !!event.data?.state
+        hasState: !!event.data?.state,
+        isSmartcarAuth: event.data?.type === 'SMARTCAR_AUTH_SUCCESS',
+        hasCodeAndState: !!(event.data?.code && event.data?.state)
       });
       
       // Handle different message formats and sources
       if (event.data && typeof event.data === 'object') {
         // Handle direct message format
         if (event.data.type === 'SMARTCAR_AUTH_SUCCESS') {
-          console.log('Processing SMARTCAR_AUTH_SUCCESS message');
+          console.log('🎯 SMARTCAR_AUTH_SUCCESS detected - processing...');
           await handleOAuthSuccess(event.data);
         }
         // Handle nested message format (from Smartcar callback)
-        else if (event.data.code && event.data.state && !event.data.target) {
-          console.log('Processing OAuth callback with code and state');
+        else if (event.data.code && event.data.state && !event.data.target && !event.data.name) {
+          console.log('🎯 OAuth callback detected (code + state) - processing...');
           await handleOAuthSuccess({ ...event.data, type: 'SMARTCAR_AUTH_SUCCESS' });
         }
+        // Additional fallback for any message with OAuth data
+        else if (event.data.code && event.data.state) {
+          console.log('🎯 FALLBACK: OAuth data detected despite filters - processing...');
+          await handleOAuthSuccess({ ...event.data, type: 'SMARTCAR_AUTH_SUCCESS' });
+        }
+        else {
+          console.log('⚠️ Message not matching OAuth pattern:', event.data);
+        }
+      } else {
+        console.log('⚠️ Non-object message:', typeof event.data, event.data);
       }
     };
 
