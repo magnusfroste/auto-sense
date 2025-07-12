@@ -48,7 +48,12 @@ export default function SmartcarTest() {
 
         // Listen for OAuth completion
         const handleMessage = async (event: MessageEvent) => {
-          console.log('📨 Test page received message:', event.data);
+          // Filter out MetaMask and other irrelevant messages
+          if (!event.data || typeof event.data !== 'object' || event.data.target === 'metamask-inpage') {
+            return;
+          }
+
+          console.log('📨 Test page received relevant message:', event.data);
 
           if (event.data?.type === 'SMARTCAR_AUTH_SUCCESS') {
             console.log('🎉 OAuth success in test page, exchanging code for tokens...');
@@ -59,6 +64,9 @@ export default function SmartcarTest() {
               if (!user) {
                 throw new Error('No authenticated user found');
               }
+
+              console.log('👤 Current user:', user.id);
+              console.log('🔑 Authorization code:', event.data.code?.substring(0, 10) + '...');
 
               // Exchange code for tokens using POST endpoint
               const { data: tokenData, error: tokenError } = await supabase.functions.invoke('smartcar-auth', {
