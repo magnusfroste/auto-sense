@@ -212,17 +212,20 @@ export const useHybridTrip = () => {
       }));
 
       // Start appropriate tracking based on source
-      if (source === 'gps' || source === 'hybrid') {
+      if (source === 'gps') {
         startGPSTracking();
-      }
-      
-      if ((source === 'vehicle' || source === 'hybrid') && vehicleConnectionId) {
+      } else if (source === 'vehicle' && vehicleConnectionId) {
         startVehicleTracking(vehicleConnectionId);
+      } else if (source === 'hybrid') {
+        startGPSTracking();
+        if (vehicleConnectionId) {
+          startVehicleTracking(vehicleConnectionId);
+        }
       }
 
       toast({
         title: 'Resa startad!',
-        description: `${source === 'gps' ? 'GPS' : source === 'vehicle' ? 'Fordon' : 'Hybrid'}-spårning är nu aktivt.`,
+        description: `${source === 'gps' ? 'GPS' : source === 'vehicle' ? 'Fordons' : 'Hybrid'}-spårning är nu aktivt.`,
       });
     } catch (error) {
       toast({
@@ -278,6 +281,7 @@ export const useHybridTrip = () => {
 
   // Start vehicle tracking
   const startVehicleTracking = useCallback((vehicleConnectionId: string) => {
+    console.log('🚗 Starting vehicle tracking for:', vehicleConnectionId);
     vehiclePollingRef.current = setInterval(async () => {
       try {
         const connection = connections.find(c => c.id === vehicleConnectionId);
@@ -361,12 +365,15 @@ export const useHybridTrip = () => {
     setTrip(prev => ({ ...prev, status: 'active' }));
     
     // Restart tracking based on source
-    if (trip.source === 'gps' || trip.source === 'hybrid') {
+    if (trip.source === 'gps') {
       startGPSTracking();
-    }
-    
-    if ((trip.source === 'vehicle' || trip.source === 'hybrid') && trip.vehicleConnectionId) {
+    } else if (trip.source === 'vehicle' && trip.vehicleConnectionId) {
       startVehicleTracking(trip.vehicleConnectionId);
+    } else if (trip.source === 'hybrid') {
+      startGPSTracking();
+      if (trip.vehicleConnectionId) {
+        startVehicleTracking(trip.vehicleConnectionId);
+      }
     }
     
     toast({
