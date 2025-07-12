@@ -130,11 +130,21 @@ export default function SmartcarTest() {
         console.log('🔀 Performing FULL PAGE REDIRECT (no popup/iframe)');
         console.log('🔗 OAuth URL:', data.oauth_url);
         
-        // Add small delay to ensure console logs are visible
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Force full page navigation (should work on Mac Chrome)
-        window.location.href = data.oauth_url;
+        // Try multiple redirect methods to bypass any interference
+        try {
+          // Method 1: Replace current location
+          window.location.replace(data.oauth_url);
+        } catch (error) {
+          console.log('Replace failed, trying assign...');
+          try {
+            // Method 2: Assign location
+            window.location.assign(data.oauth_url);
+          } catch (error2) {
+            console.log('Assign failed, trying href...');
+            // Method 3: Set href directly
+            window.location.href = data.oauth_url;
+          }
+        }
         return;
       } else {
         setTestResult({
