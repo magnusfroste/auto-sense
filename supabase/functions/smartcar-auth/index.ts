@@ -26,20 +26,11 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     if (req.method === 'GET') {
-      // Get test mode from query params or body
+      // Get test mode from query params
       const url = new URL(req.url)
-      let testMode = url.searchParams.get('test') === 'true'
+      const testMode = url.searchParams.get('test') === 'true'
       
-      // If request has body, also check for test mode there
-      const bodyText = await req.text()
-      if (bodyText) {
-        try {
-          const bodyData = JSON.parse(bodyText)
-          testMode = testMode || bodyData.test === true
-        } catch (e) {
-          // Ignore JSON parse errors for GET requests
-        }
-      }
+      console.log('GET request for OAuth URL, test mode:', testMode)
       
       // Return OAuth URL for frontend
       const state = crypto.randomUUID()
@@ -53,6 +44,8 @@ Deno.serve(async (req) => {
         `scope=read_vehicle_info read_location read_odometer read_fuel&` +
         `state=${state}&` +
         `mode=${mode}`
+
+      console.log('Generated OAuth URL with mode:', mode)
 
       return new Response(JSON.stringify({ 
         oauth_url: oauthUrl,

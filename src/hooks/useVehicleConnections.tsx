@@ -53,14 +53,11 @@ export const useVehicleConnections = () => {
     if (!user) return;
 
     try {
-      // Get OAuth URL from edge function with optional test mode
-      const url = new URL(`${window.location.origin}/functions/v1/smartcar-auth`)
-      if (testMode) {
-        url.searchParams.set('test', 'true')
-      }
-
-      const { data: authData, error: authError } = await supabase.functions.invoke('smartcar-auth', {
-        ...(testMode && { body: { test: true } })
+      // Call edge function with test mode via URL parameter
+      const functionName = testMode ? 'smartcar-auth?test=true' : 'smartcar-auth';
+      
+      const { data: authData, error: authError } = await supabase.functions.invoke(functionName, {
+        method: 'GET'
       });
 
       if (authError) throw authError;
