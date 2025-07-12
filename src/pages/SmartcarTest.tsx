@@ -55,12 +55,21 @@ export default function SmartcarTest() {
           return;
         }
 
-        // Listen for OAuth completion - more permissive filtering
+        // Listen for OAuth completion - accept Supabase origin
         const handleMessage = async (event: MessageEvent) => {
           // Log ALL messages for debugging
           console.log('📨 Received message from:', event.origin, 'data:', event.data);
 
-          // Accept messages from any origin for testing (more permissive)
+          // Accept messages from Supabase domains specifically
+          const allowedOrigins = [
+            'https://umjqoizuhfrxzjgrdvei.supabase.co',
+            window.location.origin
+          ];
+          
+          if (!allowedOrigins.includes(event.origin)) {
+            console.log('🚫 Ignoring message from unauthorized origin:', event.origin);
+            return;
+          }
           if (!event.data || typeof event.data !== 'object') {
             console.log('🚫 Ignoring non-object message');
             return;
