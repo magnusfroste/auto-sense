@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -23,7 +23,7 @@ export const useVehicleConnections = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchConnections = async () => {
+  const fetchConnections = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -47,7 +47,7 @@ export const useVehicleConnections = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   const connectVehicle = async (testMode: boolean = false) => {
     if (!user) {
@@ -180,7 +180,7 @@ export const useVehicleConnections = () => {
 
   useEffect(() => {
     fetchConnections();
-  }, [user]);
+  }, [fetchConnections]);
 
   // Handle OAuth callback
   useEffect(() => {
@@ -335,7 +335,7 @@ export const useVehicleConnections = () => {
       console.log('Removing message event listener...');
       window.removeEventListener('message', handleMessage);
     };
-  }, [toast, fetchConnections]);
+  }, [fetchConnections]);
 
   return {
     connections,
