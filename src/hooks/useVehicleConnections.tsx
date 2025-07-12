@@ -169,21 +169,31 @@ export const useVehicleConnections = () => {
   // Handle OAuth callback
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      console.log('Message event received:', {
+      // Filter out MetaMask and other unwanted messages
+      if (event.data?.target === 'metamask-inpage' || 
+          event.data?.name === 'metamask-provider') {
+        return; // Ignore MetaMask messages
+      }
+
+      console.log('Filtered message event received:', {
         origin: event.origin,
         data: event.data,
         type: typeof event.data,
-        hasType: event.data?.type
+        hasType: event.data?.type,
+        hasCode: !!event.data?.code,
+        hasState: !!event.data?.state
       });
       
       // Handle different message formats and sources
       if (event.data && typeof event.data === 'object') {
         // Handle direct message format
         if (event.data.type === 'SMARTCAR_AUTH_SUCCESS') {
+          console.log('Processing SMARTCAR_AUTH_SUCCESS message');
           await handleOAuthSuccess(event.data);
         }
         // Handle nested message format (from Smartcar callback)
-        else if (event.data.code && event.data.state) {
+        else if (event.data.code && event.data.state && !event.data.target) {
+          console.log('Processing OAuth callback with code and state');
           await handleOAuthSuccess({ ...event.data, type: 'SMARTCAR_AUTH_SUCCESS' });
         }
       }
