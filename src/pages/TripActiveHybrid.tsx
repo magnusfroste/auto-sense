@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+console.log('🔧 TripActiveHybrid component loaded');
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { useHybridTrip, type TripSource } from '@/hooks/useHybridTrip';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 
 export default function TripActiveHybrid() {
+  console.log('🚀 TripActiveHybrid component rendering');
   const navigate = useNavigate();
   const { connections } = useVehicleConnections();
   const { 
@@ -49,6 +51,7 @@ export default function TripActiveHybrid() {
   }, [connections, selectedVehicle]);
 
   const handleStartTrip = async () => {
+    console.log('🎯 handleStartTrip called with:', { selectedSource, selectedVehicle });
     const vehicleId = (selectedSource === 'vehicle' || selectedSource === 'hybrid') 
       ? selectedVehicle 
       : undefined;

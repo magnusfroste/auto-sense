@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+console.log('🔧 useHybridTrip loaded');
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import { useTrips } from './useTrips';
@@ -42,6 +43,7 @@ export interface HybridTripData {
 }
 
 export const useHybridTrip = () => {
+  console.log('🚀 useHybridTrip hook initialized');
   const { user } = useAuth();
   const { toast } = useToast();
   const { saveTrip } = useTrips();
@@ -65,6 +67,7 @@ export const useHybridTrip = () => {
   });
 
   // Available trip sources based on user's vehicle connections
+  console.log('🚗 Vehicle connections:', connections.length, connections);
   const availableSources: { value: TripSource; label: string; description: string }[] = [
     { value: 'gps', label: 'GPS Telefon', description: 'Använd telefonens GPS för spårning' },
     ...(connections.length > 0 ? [
@@ -190,6 +193,7 @@ export const useHybridTrip = () => {
 
   // Start trip tracking
   const startTrip = useCallback(async (source: TripSource, vehicleConnectionId?: string) => {
+    console.log('🛣️ Starting trip with source:', source, 'vehicle:', vehicleConnectionId);
     try {
       const location = await getCurrentLocation();
       const now = new Date();

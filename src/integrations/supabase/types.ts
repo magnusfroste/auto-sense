@@ -676,16 +676,22 @@ export type Database = {
         Row: {
           accounting_experience: string | null
           avatar_url: string | null
+          bio: string | null
           created_at: string | null
           email: string | null
+          experience_level: string | null
+          favorite_activities: string[] | null
           full_name: string | null
           id: string
           industry: string | null
           is_developer: boolean | null
+          location: string | null
           name: string | null
+          personal_goals: string | null
           preferred_activity:
             | Database["public"]["Enums"]["activity_type"]
             | null
+          public_profile: boolean | null
           show_account_numbers: boolean | null
           total_challenges_completed: number | null
           total_distance_meters: number | null
@@ -696,16 +702,22 @@ export type Database = {
         Insert: {
           accounting_experience?: string | null
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
           email?: string | null
+          experience_level?: string | null
+          favorite_activities?: string[] | null
           full_name?: string | null
           id: string
           industry?: string | null
           is_developer?: boolean | null
+          location?: string | null
           name?: string | null
+          personal_goals?: string | null
           preferred_activity?:
             | Database["public"]["Enums"]["activity_type"]
             | null
+          public_profile?: boolean | null
           show_account_numbers?: boolean | null
           total_challenges_completed?: number | null
           total_distance_meters?: number | null
@@ -716,16 +728,22 @@ export type Database = {
         Update: {
           accounting_experience?: string | null
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
           email?: string | null
+          experience_level?: string | null
+          favorite_activities?: string[] | null
           full_name?: string | null
           id?: string
           industry?: string | null
           is_developer?: boolean | null
+          location?: string | null
           name?: string | null
+          personal_goals?: string | null
           preferred_activity?:
             | Database["public"]["Enums"]["activity_type"]
             | null
+          public_profile?: boolean | null
           show_account_numbers?: boolean | null
           total_challenges_completed?: number | null
           total_distance_meters?: number | null
@@ -1066,9 +1084,40 @@ export type Database = {
           },
         ]
       }
+      track_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          rating: number | null
+          review: string | null
+          track_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rating?: number | null
+          review?: string | null
+          track_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rating?: number | null
+          review?: string | null
+          track_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       track_tracks: {
         Row: {
           activity_type: Database["public"]["Enums"]["activity_type"]
+          average_rating: number | null
           created_at: string
           creator_id: string
           description: string | null
@@ -1079,16 +1128,19 @@ export type Database = {
           is_deleted: boolean
           is_public: boolean
           is_verified: boolean
+          last_completed_at: string | null
           max_lat: number
           max_lng: number
           min_lat: number
           min_lng: number
           name: string
           route_data: Json
+          times_completed: number | null
           updated_at: string
         }
         Insert: {
           activity_type?: Database["public"]["Enums"]["activity_type"]
+          average_rating?: number | null
           created_at?: string
           creator_id: string
           description?: string | null
@@ -1099,16 +1151,19 @@ export type Database = {
           is_deleted?: boolean
           is_public?: boolean
           is_verified?: boolean
+          last_completed_at?: string | null
           max_lat: number
           max_lng: number
           min_lat: number
           min_lng: number
           name: string
           route_data: Json
+          times_completed?: number | null
           updated_at?: string
         }
         Update: {
           activity_type?: Database["public"]["Enums"]["activity_type"]
+          average_rating?: number | null
           created_at?: string
           creator_id?: string
           description?: string | null
@@ -1119,12 +1174,14 @@ export type Database = {
           is_deleted?: boolean
           is_public?: boolean
           is_verified?: boolean
+          last_completed_at?: string | null
           max_lat?: number
           max_lng?: number
           min_lat?: number
           min_lng?: number
           name?: string
           route_data?: Json
+          times_completed?: number | null
           updated_at?: string
         }
         Relationships: []
