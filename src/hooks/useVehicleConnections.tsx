@@ -58,11 +58,11 @@ export const useVehicleConnections = () => {
     console.log('Starting vehicle connection process:', { testMode, userId: user.id });
 
     try {
-      // Call edge function with test mode parameter in body
+      // Call edge function with test mode as query parameter
       console.log('Calling smartcar-auth GET endpoint...');
-      const { data: authData, error: authError } = await supabase.functions.invoke('smartcar-auth', {
-        method: 'GET',
-        body: { test: testMode }
+      const functionName = testMode ? 'smartcar-auth?test=true' : 'smartcar-auth';
+      const { data: authData, error: authError } = await supabase.functions.invoke(functionName, {
+        method: 'GET'
       });
 
       console.log('GET response:', { authData, authError });
