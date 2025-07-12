@@ -17,18 +17,40 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
+  console.log('Request received:', {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
+  });
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const smartcarClientId = Deno.env.get('SMARTCAR_CLIENT_ID')!
     const smartcarClientSecret = Deno.env.get('SMARTCAR_CLIENT_SECRET')!
 
+    if (!smartcarClientId || !smartcarClientSecret) {
+      console.error('Missing Smartcar credentials');
+      throw new Error('Smartcar credentials not configured');
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     if (req.method === 'GET') {
-      // Get test mode from query params
-      const url = new URL(req.url)
-      const testMode = url.searchParams.get('test') === 'true'
+      // Parse request body for test mode parameter
+      let testMode = false;
+      try {
+        if (req.body) {
+          const body = await req.json();
+          testMode = body.test === true;
+          console.log('GET request body:', body);
+        }
+      } catch (e) {
+        // Try query params as fallback
+        const url = new URL(req.url)
+        testMode = url.searchParams.get('test') === 'true'
+        console.log('Using query params for test mode:', testMode);
+      }
       
       console.log('GET request for OAuth URL, test mode:', testMode)
       
@@ -58,11 +80,20 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === 'POST') {
-      const { code, user_id }: SmartcarAuthRequest = await req.json()
+      const body = await req.json();
+      console.log('POST request body:', { ...body, code: body.code?.substring(0, 10) + '...' });
+      
+      const { code, user_id, test }: SmartcarAuthRequest = body;
 
-      console.log('Exchanging code for token for user:', user_id)
+      if (!code || !user_id) {
+        console.error('Missing required parameters:', { hasCode: !!code, hasUserId: !!user_id });
+        throw new Error('Missing code or user_id');
+      }
+
+      console.log('Exchanging code for token for user:', user_id, 'test mode:', test)
 
       // Exchange code for access token
+      console.log('Exchanging code for tokens...');
       const tokenResponse = await fetch('https://auth.smartcar.com/oauth/token', {
         method: 'POST',
         headers: {
@@ -77,13 +108,13 @@ Deno.serve(async (req) => {
       })
 
       if (!tokenResponse.ok) {
-        const error = await tokenResponse.text()
-        console.error('Token exchange failed:', error)
-        throw new Error('Failed to exchange code for token')
+        const tokenError = await tokenResponse.text();
+        console.error('Token exchange failed:', tokenResponse.status, tokenError);
+        throw new Error(`Failed to exchange code for tokens: ${tokenResponse.status} ${tokenError}`)
       }
 
       const tokenData = await tokenResponse.json()
-      console.log('Token exchange successful')
+      console.log('Token exchange successful, access_token length:', tokenData.access_token?.length)
 
       // Get vehicles list - using v1.0 API as per Smartcar tutorial
       const vehiclesResponse = await fetch('https://api.smartcar.com/v1.0/vehicles', {
@@ -149,11 +180,12 @@ Deno.serve(async (req) => {
         connections.push(connection)
       }
 
-      console.log('Stored', connections.length, 'vehicle connections')
+      console.log(`Successfully stored ${connections.length} vehicle connections`);
 
       return new Response(JSON.stringify({ 
         success: true, 
-        connections: connections.length 
+        connections_stored: connections.length,
+        test_mode: test 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
