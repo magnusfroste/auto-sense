@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapComponent } from '@/components/map/MapComponent';
+import { VehicleStatusIndicator } from '@/components/vehicle/VehicleStatusIndicator';
 import { useTrips } from '@/hooks/useTrips';
 import { 
   MapPin, 
@@ -228,35 +229,39 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Snabbåtgärder</CardTitle>
-            <CardDescription>
-              Vanliga uppgifter och funktioner
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <NavLink to="/trip/active" className="block">
-              <Button variant="outline" className="w-full justify-start">
-                <Play className="mr-2 h-4 w-4" />
-                Starta ny resa
-              </Button>
-            </NavLink>
-            <NavLink to="/trips" className="block">
-              <Button variant="outline" className="w-full justify-start">
-                <MapPin className="mr-2 h-4 w-4" />
-                Granska resor
-              </Button>
-            </NavLink>
-            <NavLink to="/reports" className="block">
-              <Button variant="outline" className="w-full justify-start">
-                <FileText className="mr-2 h-4 w-4" />
-                Exportera rapport
-              </Button>
-            </NavLink>
-          </CardContent>
-        </Card>
+        {/* Vehicle Status and Quick Actions */}
+        <div className="space-y-6">
+          <VehicleStatusIndicator />
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Snabbåtgärder</CardTitle>
+              <CardDescription>
+                Vanliga uppgifter och funktioner
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <NavLink to="/trip/active" className="block">
+                <Button variant="outline" className="w-full justify-start">
+                  <Play className="mr-2 h-4 w-4" />
+                  Starta ny resa
+                </Button>
+              </NavLink>
+              <NavLink to="/trips" className="block">
+                <Button variant="outline" className="w-full justify-start">
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Granska resor
+                </Button>
+              </NavLink>
+              <NavLink to="/reports" className="block">
+                <Button variant="outline" className="w-full justify-start">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Exportera rapport
+                </Button>
+              </NavLink>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

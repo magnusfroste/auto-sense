@@ -68,6 +68,7 @@ export const useTrips = () => {
     trip_status?: 'active' | 'completed' | 'paused';
     route_data?: LocationData[];
     notes?: string;
+    vehicle_connection_id?: string;
   }) => {
     if (!user) return;
 
@@ -85,7 +86,8 @@ export const useTrips = () => {
           trip_type: tripData.trip_type || 'unknown',
           trip_status: tripData.trip_status || 'completed',
           route_data: tripData.route_data as any,
-          notes: tripData.notes
+          notes: tripData.notes,
+          vehicle_connection_id: tripData.vehicle_connection_id
         })
         .select()
         .single();
