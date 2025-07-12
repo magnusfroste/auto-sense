@@ -14,6 +14,8 @@ export default function SmartcarTest() {
     message: string;
     data?: any;
   } | null>(null);
+  const [vehicleData, setVehicleData] = useState<any>(null);
+  const [isStreamingData, setIsStreamingData] = useState(false);
   const { toast } = useToast();
 
   // Check for OAuth results in URL parameters
@@ -174,6 +176,87 @@ export default function SmartcarTest() {
     await handleTestConnection();
   };
 
+  const fetchVehicleData = async () => {
+    if (!testResult?.success || !testResult?.data?.vehicles?.length) {
+      toast({
+        title: "Fel",
+        description: "Ingen ansluten bil att hämta data från. Kör OAuth test först.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsStreamingData(true);
+    setVehicleData(null);
+
+    try {
+      const vehicle = testResult.data.vehicles[0]; // Use first vehicle
+      console.log('📡 Fetching data for vehicle:', vehicle.id);
+
+      const { data, error } = await supabase.functions.invoke('smartcar-vehicle-data', {
+        body: {
+          vehicleId: vehicle.id,
+          accessToken: vehicle.access_token
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('📊 Vehicle data received:', data);
+      setVehicleData(data);
+
+      toast({
+        title: "Data hämtad!",
+        description: `Fick ${data.dataPoints} datapunkter från fordonet`,
+      });
+
+    } catch (error: any) {
+      console.error('❌ Error fetching vehicle data:', error);
+      toast({
+        title: "Fel",
+        description: `Kunde inte hämta fordonsdata: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsStreamingData(false);
+    }
+  };
+
+  const startDataPolling = () => {
+    if (!testResult?.success) return;
+
+    fetchVehicleData(); // Initial fetch
+    
+    // Poll every 10 seconds
+    const interval = setInterval(() => {
+      if (testResult?.success) {
+        fetchVehicleData();
+      }
+    }, 10000);
+
+    toast({
+      title: "Data streaming startad",
+      description: "Hämtar fordonsdata var 10:e sekund",
+    });
+
+    // Store interval ID to clear later
+    (window as any).smartcarPolling = interval;
+  };
+
+  const stopDataPolling = () => {
+    if ((window as any).smartcarPolling) {
+      clearInterval((window as any).smartcarPolling);
+      (window as any).smartcarPolling = null;
+      
+      toast({
+        title: "Data streaming stoppad",
+        description: "Slutar hämta fordonsdata",
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-6">
@@ -258,6 +341,44 @@ export default function SmartcarTest() {
                 
                 <p className="text-sm">{testResult.message}</p>
                 
+                {testResult.success && (
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={fetchVehicleData}
+                        disabled={isStreamingData}
+                        size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        {isStreamingData ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Car className="h-4 w-4" />
+                        )}
+                        Hämta Fordonsdata
+                      </Button>
+                      
+                      <Button
+                        onClick={startDataPolling}
+                        disabled={isStreamingData || !!(window as any).smartcarPolling}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Starta Data Streaming
+                      </Button>
+                      
+                      <Button
+                        onClick={stopDataPolling}
+                        disabled={!(window as any).smartcarPolling}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        Stoppa Streaming
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
                 {testResult.data && (
                   <details className="mt-4">
                     <summary className="cursor-pointer text-sm font-medium">
@@ -269,6 +390,84 @@ export default function SmartcarTest() {
                   </details>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Vehicle Data Display */}
+        {vehicleData && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Car className="h-5 w-5" />
+                Live Fordonsdata
+              </CardTitle>
+              <CardDescription>
+                Senaste data från anslutna fordon
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {vehicleData.data.location && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <h4 className="font-medium mb-2">📍 Position</h4>
+                    <p className="text-sm">Lat: {vehicleData.data.location.latitude}</p>
+                    <p className="text-sm">Lng: {vehicleData.data.location.longitude}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(vehicleData.data.location.timestamp).toLocaleString('sv-SE')}
+                    </p>
+                  </div>
+                )}
+
+                {vehicleData.data.odometer && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <h4 className="font-medium mb-2">🛣️ Mätarställning</h4>
+                    <p className="text-sm">{vehicleData.data.odometer.distance} {vehicleData.data.odometer.unit}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(vehicleData.data.odometer.timestamp).toLocaleString('sv-SE')}
+                    </p>
+                  </div>
+                )}
+
+                {vehicleData.data.fuel && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <h4 className="font-medium mb-2">⛽ Bränslennivå</h4>
+                    <p className="text-sm">{vehicleData.data.fuel.percent}%</p>
+                    {vehicleData.data.fuel.range && (
+                      <p className="text-sm">Räckvidd: {vehicleData.data.fuel.range} {vehicleData.data.fuel.unit}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(vehicleData.data.fuel.timestamp).toLocaleString('sv-SE')}
+                    </p>
+                  </div>
+                )}
+
+                {vehicleData.data.info && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <h4 className="font-medium mb-2">🚗 Fordonsinformation</h4>
+                    <p className="text-sm">{vehicleData.data.info.year} {vehicleData.data.info.make} {vehicleData.data.info.model}</p>
+                    <p className="text-xs text-muted-foreground mt-1">ID: {vehicleData.data.info.id}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                <p className="text-sm text-green-800 dark:text-green-200">
+                  ✅ Data hämtad framgångsrikt! {vehicleData.dataPoints} datapunkter mottagna.
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                  Senast uppdaterad: {new Date(vehicleData.data.timestamp).toLocaleString('sv-SE')}
+                </p>
+              </div>
+              
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm font-medium">
+                  Visa all fordonsdata (JSON)
+                </summary>
+                <pre className="mt-2 text-xs bg-muted p-3 rounded overflow-auto">
+                  {JSON.stringify(vehicleData, null, 2)}
+                </pre>
+              </details>
             </CardContent>
           </Card>
         )}

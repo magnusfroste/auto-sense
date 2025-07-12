@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.smartcar-test-generator]
 verify_jwt = false
+
+[functions.smartcar-vehicle-data]
+verify_jwt = true
