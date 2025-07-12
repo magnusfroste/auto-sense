@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Car, Info, TestTube, Key } from 'lucide-react';
+import { Plus, Car, Info, TestTube } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 import { useToast } from '@/hooks/use-toast';
@@ -13,35 +12,14 @@ import { VehicleConnectionCard } from './VehicleConnectionCard';
 
 export const VehicleConnectionSection = () => {
   const [demoMode, setDemoMode] = useState(false);
-  const [testEmail, setTestEmail] = useState('');
-  const [testPassword, setTestPassword] = useState('');
   const [connecting, setConnecting] = useState(false);
   const { connections, loading, connectVehicle } = useVehicleConnections();
   const { toast } = useToast();
 
   const connectTestVehicle = async () => {
-    if (demoMode && (!testEmail.trim() || !testPassword.trim())) {
-      toast({
-        title: "Fyll i test-credentials",
-        description: "Både e-post och lösenord krävs för testfordonet",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setConnecting(true);
     try {
-      if (demoMode) {
-        sessionStorage.setItem('smartcar_test_email', testEmail);
-        sessionStorage.setItem('smartcar_test_password', testPassword);
-        await connectVehicle(true);
-        toast({
-          title: "Test OAuth-flöde startat",
-          description: `Använd ${testEmail} för att logga in i Smartcar testmiljön`
-        });
-      } else {
-        await connectVehicle(false);
-      }
+      await connectVehicle(demoMode);
     } catch (error: any) {
       console.error('Error connecting vehicle:', error);
       toast({
@@ -108,43 +86,6 @@ export const VehicleConnectionSection = () => {
             />
           </div>
 
-          {/* Test Vehicle Credentials */}
-          {demoMode && (
-            <div className="p-4 bg-muted/50 rounded-lg space-y-4">
-              <div className="flex items-center gap-2">
-                <Key className="h-4 w-4" />
-                <Label className="text-sm font-medium">Test-credentials</Label>
-              </div>
-              
-              <div className="grid grid-cols-1 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="test-email">E-post</Label>
-                  <Input
-                    id="test-email"
-                    type="email"
-                    placeholder="exempel@simulated.com"
-                    value={testEmail}
-                    onChange={(e) => setTestEmail(e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="test-password">Lösenord</Label>
-                  <Input
-                    id="test-password"
-                    type="password"
-                    placeholder="Testfordonets lösenord"
-                    value={testPassword}
-                    onChange={(e) => setTestPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="text-xs text-muted-foreground">
-                Hitta test-credentials i din Smartcar dashboard under "Test Vehicles"
-              </div>
-            </div>
-          )}
 
           <Alert>
             <Info className="h-4 w-4" />
@@ -168,7 +109,7 @@ export const VehicleConnectionSection = () => {
               </p>
               <Button 
                 onClick={connectTestVehicle}
-                disabled={connecting || (demoMode && (!testEmail.trim() || !testPassword.trim()))}
+                disabled={connecting}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 {connecting 
@@ -187,7 +128,7 @@ export const VehicleConnectionSection = () => {
                   variant="outline" 
                   size="sm" 
                   onClick={connectTestVehicle}
-                  disabled={connecting || (demoMode && (!testEmail.trim() || !testPassword.trim()))}
+                  disabled={connecting}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   {connecting 
