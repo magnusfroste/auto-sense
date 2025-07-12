@@ -85,15 +85,17 @@ Deno.serve(async (req) => {
       const tokenData = await tokenResponse.json()
       console.log('Token exchange successful')
 
-      // Get vehicles list
-      const vehiclesResponse = await fetch('https://api.smartcar.com/v2.0/vehicles', {
+      // Get vehicles list - using v1.0 API as per Smartcar tutorial
+      const vehiclesResponse = await fetch('https://api.smartcar.com/v1.0/vehicles', {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`
         }
       })
 
       if (!vehiclesResponse.ok) {
-        throw new Error('Failed to get vehicles')
+        const vehiclesError = await vehiclesResponse.text()
+        console.error('Get vehicles failed:', vehiclesResponse.status, vehiclesError)
+        throw new Error(`Failed to get vehicles: ${vehiclesResponse.status} ${vehiclesError}`)
       }
 
       const vehiclesData = await vehiclesResponse.json()
@@ -102,14 +104,24 @@ Deno.serve(async (req) => {
       // Store each vehicle connection
       const connections = []
       for (const vehicleId of vehiclesData.vehicles || []) {
-        // Get vehicle info
-        const infoResponse = await fetch(`https://api.smartcar.com/v2.0/vehicles/${vehicleId}`, {
+        console.log('Processing vehicle:', vehicleId)
+        
+        // Get vehicle info - using v1.0 API as per Smartcar tutorial
+        const infoResponse = await fetch(`https://api.smartcar.com/v1.0/vehicles/${vehicleId}`, {
           headers: {
             'Authorization': `Bearer ${tokenData.access_token}`
           }
         })
 
-        const vehicleInfo = infoResponse.ok ? await infoResponse.json() : {}
+        let vehicleInfo = {}
+        if (infoResponse.ok) {
+          vehicleInfo = await infoResponse.json()
+          console.log('Vehicle info retrieved:', vehicleInfo)
+        } else {
+          const infoError = await infoResponse.text()
+          console.error('Get vehicle info failed:', infoResponse.status, infoError)
+          // Continue with empty info rather than failing completely
+        }
 
         // Store vehicle connection
         const { data: connection, error } = await supabase
