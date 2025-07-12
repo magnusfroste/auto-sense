@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,6 +15,84 @@ export default function SmartcarTest() {
     data?: any;
   } | null>(null);
   const { toast } = useToast();
+
+  // Check for OAuth results in URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthSuccess = urlParams.get('oauth_success');
+    const oauthError = urlParams.get('oauth_error');
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+
+    if (oauthError) {
+      setTestResult({
+        success: false,
+        message: `OAuth error: ${oauthError}`
+      });
+      // Clean URL
+      window.history.replaceState({}, '', '/smartcar-test');
+    } else if (oauthSuccess && code) {
+      handleOAuthSuccess(code, state);
+    }
+  }, []);
+
+  const handleOAuthSuccess = async (code: string, state: string | null) => {
+    console.log('🎉 OAuth success detected! Processing token exchange...');
+    setIsConnecting(true);
+    
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+
+      console.log('👤 Current user:', user.id);
+      console.log('🔑 Authorization code:', code?.substring(0, 10) + '...');
+
+      // Exchange code for tokens using POST endpoint
+      const { data: tokenData, error: tokenError } = await supabase.functions.invoke('smartcar-auth', {
+        method: 'POST',
+        body: {
+          code: code,
+          user_id: user.id,
+          test: true
+        }
+      });
+
+      if (tokenError) {
+        console.error('❌ Token exchange error:', tokenError);
+        setTestResult({
+          success: false,
+          message: `Token exchange failed: ${tokenError.message}`
+        });
+        return;
+      }
+
+      console.log('✅ Token exchange successful:', tokenData);
+      setTestResult({
+        success: true,
+        message: `Vehicle connection successful! Stored ${tokenData.connections_stored} connections.`,
+        data: tokenData
+      });
+      
+      toast({
+        title: "Test lyckades!",
+        description: "Smartcar OAuth flow och token exchange fungerar",
+      });
+      
+    } catch (error: any) {
+      console.error('💥 Error during token exchange:', error);
+      setTestResult({
+        success: false,
+        message: `Token exchange error: ${error.message}`
+      });
+    } finally {
+      setIsConnecting(false);
+      // Clean URL
+      window.history.replaceState({}, '', '/smartcar-test');
+    }
+  };
 
   const handleTestConnection = async () => {
     console.log('🧪 Starting Smartcar test connection...');
@@ -39,138 +117,10 @@ export default function SmartcarTest() {
       console.log('✅ Smartcar auth response:', data);
 
       if (data?.oauth_url) {
-        // Open popup window for OAuth
-        console.log('🪟 Opening popup for OAuth...');
-        const popup = window.open(
-          data.oauth_url,
-          'smartcar-oauth',
-          'width=600,height=700,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
-        );
-
-        if (!popup) {
-          setTestResult({
-            success: false,
-            message: 'Popup blockerat av webbläsaren'
-          });
-          return;
-        }
-
-        // Listen for OAuth completion - accept Supabase origin
-        const handleMessage = async (event: MessageEvent) => {
-          // Log ALL messages for debugging
-          console.log('📨 Received message from:', event.origin, 'data:', event.data);
-
-          // Accept messages from Supabase domains specifically
-          const allowedOrigins = [
-            'https://umjqoizuhfrxzjgrdvei.supabase.co',
-            window.location.origin
-          ];
-          
-          if (!allowedOrigins.includes(event.origin)) {
-            console.log('🚫 Ignoring message from unauthorized origin:', event.origin);
-            return;
-          }
-          if (!event.data || typeof event.data !== 'object') {
-            console.log('🚫 Ignoring non-object message');
-            return;
-          }
-
-          // Filter out known irrelevant messages
-          if (event.data.target === 'metamask-inpage' || 
-              event.data.type === 'webpackWarnings' ||
-              event.data.type === 'webpackErrors') {
-            return;
-          }
-
-          console.log('📨 Processing message:', event.data);
-
-          if (event.data?.type === 'SMARTCAR_AUTH_SUCCESS') {
-            console.log('🎉 OAuth success detected! Code:', event.data.code?.substring(0, 10) + '...');
-            
-            try {
-              // Get current user
-              const { data: { user } } = await supabase.auth.getUser();
-              if (!user) {
-                throw new Error('No authenticated user found');
-              }
-
-              console.log('👤 Current user:', user.id);
-
-              // Exchange code for tokens using POST endpoint
-              const { data: tokenData, error: tokenError } = await supabase.functions.invoke('smartcar-auth', {
-                method: 'POST',
-                body: {
-                  code: event.data.code,
-                  user_id: user.id,
-                  test: true
-                }
-              });
-
-              if (tokenError) {
-                console.error('❌ Token exchange error:', tokenError);
-                setTestResult({
-                  success: false,
-                  message: `Token exchange failed: ${tokenError.message}`
-                });
-                return;
-              }
-
-              console.log('✅ Token exchange successful:', tokenData);
-              setTestResult({
-                success: true,
-                message: `Vehicle connection successful! Stored ${tokenData.connections_stored} connections.`,
-                data: tokenData
-              });
-              
-            } catch (error: any) {
-              console.error('💥 Error during token exchange:', error);
-              setTestResult({
-                success: false,
-                message: `Token exchange error: ${error.message}`
-              });
-            }
-            
-            window.removeEventListener('message', handleMessage);
-            
-            toast({
-              title: "Test lyckades!",
-              description: "Smartcar OAuth flow och token exchange fungerar",
-            });
-          }
-        };
-
-        window.addEventListener('message', handleMessage);
-
-        // Enhanced popup monitoring
-        let popupCheckInterval: NodeJS.Timeout;
-        const checkPopup = () => {
-          if (popup?.closed) {
-            console.log('🪟 Popup stängd');
-            clearInterval(popupCheckInterval);
-            window.removeEventListener('message', handleMessage);
-            if (!testResult) {
-              setTestResult({
-                success: false,
-                message: 'Popup stängd utan att OAuth slutfördes'
-              });
-            }
-            setIsConnecting(false);
-          } else {
-            console.log('🪟 Popup fortfarande öppen...');
-          }
-        };
-        
-        // Check popup status every 2 seconds
-        popupCheckInterval = setInterval(checkPopup, 2000);
-        
-        // Also set a timeout as fallback
-        setTimeout(() => {
-          if (popupCheckInterval) {
-            clearInterval(popupCheckInterval);
-          }
-          setIsConnecting(false);
-        }, 60000); // 60 second timeout
-
+        // Use direct redirect instead of popup (like Smartcar's official approach)
+        console.log('🔀 Redirecting to OAuth URL...');
+        window.location.href = data.oauth_url;
+        return;
       } else {
         setTestResult({
           success: false,
@@ -184,8 +134,7 @@ export default function SmartcarTest() {
         success: false,
         message: `Unexpected error: ${error.message}`
       });
-    } finally {
-      setTimeout(() => setIsConnecting(false), 5000); // Timeout after 5 seconds
+      setIsConnecting(false);
     }
   };
 
