@@ -60,7 +60,6 @@ export const useVehicleConnections = () => {
       }
 
       const { data: authData, error: authError } = await supabase.functions.invoke('smartcar-auth', {
-        method: 'GET',
         ...(testMode && { body: { test: true } })
       });
 
