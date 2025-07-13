@@ -278,7 +278,7 @@ export default function TripActive() {
 
       // Navigera tillbaka till dashboard efter 1 sekund
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/');
       }, 1000);
     } catch (error) {
       toast({

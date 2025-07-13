@@ -23,7 +23,7 @@ interface AppLayoutProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Navigation },
+  { name: 'Dashboard', href: '/', icon: Navigation },
   { name: 'Pågående resa', href: '/trip/active', icon: RouteIcon },
   { name: 'Mina resor', href: '/trips', icon: MapPin },
   { name: 'Rapporter', href: '/reports', icon: FileText },
