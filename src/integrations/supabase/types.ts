@@ -755,45 +755,116 @@ export type Database = {
       }
       sense_profiles: {
         Row: {
+          auto_backup: boolean | null
           auto_tracking: boolean | null
           avatar_url: string | null
+          bio: string | null
           company: string | null
           created_at: string
+          currency: string | null
+          data_retention_months: number | null
+          data_sharing_level: string | null
+          date_format: string | null
+          default_polling_frequency: number | null
           default_trip_type: Database["public"]["Enums"]["trip_type"] | null
+          default_vehicle_id: string | null
           department: string | null
+          distance_unit: string | null
           email: string | null
+          export_format: string | null
+          fuel_consumption_l_per_100km: number | null
           full_name: string | null
           id: string
+          language: string | null
+          notifications_email: boolean | null
+          notifications_sync_status: boolean | null
+          notifications_trip_end: boolean | null
+          notifications_trip_start: boolean | null
+          notifications_weekly_report: boolean | null
+          privacy_level: string | null
+          theme: string | null
+          timezone: string | null
           tracking_mode: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
+          auto_backup?: boolean | null
           auto_tracking?: boolean | null
           avatar_url?: string | null
+          bio?: string | null
           company?: string | null
           created_at?: string
+          currency?: string | null
+          data_retention_months?: number | null
+          data_sharing_level?: string | null
+          date_format?: string | null
+          default_polling_frequency?: number | null
           default_trip_type?: Database["public"]["Enums"]["trip_type"] | null
+          default_vehicle_id?: string | null
           department?: string | null
+          distance_unit?: string | null
           email?: string | null
+          export_format?: string | null
+          fuel_consumption_l_per_100km?: number | null
           full_name?: string | null
           id: string
+          language?: string | null
+          notifications_email?: boolean | null
+          notifications_sync_status?: boolean | null
+          notifications_trip_end?: boolean | null
+          notifications_trip_start?: boolean | null
+          notifications_weekly_report?: boolean | null
+          privacy_level?: string | null
+          theme?: string | null
+          timezone?: string | null
           tracking_mode?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
+          auto_backup?: boolean | null
           auto_tracking?: boolean | null
           avatar_url?: string | null
+          bio?: string | null
           company?: string | null
           created_at?: string
+          currency?: string | null
+          data_retention_months?: number | null
+          data_sharing_level?: string | null
+          date_format?: string | null
+          default_polling_frequency?: number | null
           default_trip_type?: Database["public"]["Enums"]["trip_type"] | null
+          default_vehicle_id?: string | null
           department?: string | null
+          distance_unit?: string | null
           email?: string | null
+          export_format?: string | null
+          fuel_consumption_l_per_100km?: number | null
           full_name?: string | null
           id?: string
+          language?: string | null
+          notifications_email?: boolean | null
+          notifications_sync_status?: boolean | null
+          notifications_trip_end?: boolean | null
+          notifications_trip_start?: boolean | null
+          notifications_weekly_report?: boolean | null
+          privacy_level?: string | null
+          theme?: string | null
+          timezone?: string | null
           tracking_mode?: string | null
           updated_at?: string
+          username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sense_profiles_default_vehicle_id_fkey"
+            columns: ["default_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sense_trip_exports: {
         Row: {
