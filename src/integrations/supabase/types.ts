@@ -1273,6 +1273,57 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_states: {
+        Row: {
+          connection_id: string
+          created_at: string
+          current_trip_id: string | null
+          id: string
+          last_location: Json | null
+          last_odometer: number | null
+          last_poll_time: string | null
+          polling_frequency: number | null
+          updated_at: string
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          current_trip_id?: string | null
+          id?: string
+          last_location?: Json | null
+          last_odometer?: number | null
+          last_poll_time?: string | null
+          polling_frequency?: number | null
+          updated_at?: string
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          current_trip_id?: string | null
+          id?: string
+          last_location?: Json | null
+          last_odometer?: number | null
+          last_poll_time?: string | null
+          polling_frequency?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_states_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: true
+            referencedRelation: "vehicle_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_states_current_trip_id_fkey"
+            columns: ["current_trip_id"]
+            isOneToOne: false
+            referencedRelation: "sense_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, Unplug, Calendar, Activity, Play, Pause, MapPin, Gauge, Fuel, Info } from 'lucide-react';
+import { Car, Unplug, Calendar, Activity, Play, Pause, MapPin, Gauge, Fuel, Info, Target } from 'lucide-react';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
+import { useVehiclePolling } from '@/hooks/useVehiclePolling';
 import { supabase } from '@/integrations/supabase/client';
 
 interface VehicleConnection {
@@ -43,10 +44,14 @@ interface VehicleConnectionCardProps {
 
 export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps) => {
   const { disconnectVehicle } = useVehicleConnections();
+  const { startVehiclePolling, getVehicleState } = useVehiclePolling();
   const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  
+  // Get current vehicle state from polling system
+  const vehicleState = getVehicleState(connection.id);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
@@ -90,6 +95,10 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
   const stopPolling = useCallback(() => {
     setIsPolling(false);
   }, []);
+
+  const startTripPolling = useCallback(async () => {
+    await startVehiclePolling(connection.id);
+  }, [startVehiclePolling, connection.id]);
 
   // Set up polling interval
   useEffect(() => {
@@ -156,6 +165,36 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
           </div>
         )}
 
+        {/* Trip Detection Status */}
+        {vehicleState && (
+          <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                Trip Detection
+              </h4>
+              <Badge variant={vehicleState.current_trip_id ? 'default' : 'secondary'}>
+                {vehicleState.current_trip_id ? 'Pågående resa' : 'Väntar'}
+              </Badge>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {vehicleState.last_odometer && (
+                <div className="flex items-center gap-1">
+                  <Gauge className="h-3 w-3 text-muted-foreground" />
+                  <span>{(vehicleState.last_odometer / 1000).toFixed(0)} km</span>
+                </div>
+              )}
+              
+              {vehicleState.last_poll_time && (
+                <div className="text-muted-foreground">
+                  Senast: {new Date(vehicleState.last_poll_time).toLocaleTimeString('sv-SE')}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Live Vehicle Data */}
         {vehicleData && (
           <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
@@ -203,6 +242,19 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
         )}
 
         <div className="pt-2 space-y-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={startTripPolling}
+              disabled={loading || !!vehicleState}
+              className="flex-1"
+            >
+              <Target className="mr-2 h-4 w-4" />
+              {vehicleState ? 'Trip detection aktiv' : 'Aktivera trip detection'}
+            </Button>
+          </div>
+          
           <div className="flex gap-2">
             <Button
               variant="outline"
