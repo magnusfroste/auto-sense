@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapComponent } from '@/components/map/MapComponent';
-import { VehicleStatusIndicator } from '@/components/vehicle/VehicleStatusIndicator';
+import { VehiclePollingStatus } from '@/components/vehicle/VehiclePollingStatus';
 import { useTrips } from '@/hooks/useTrips';
 import { 
   MapPin, 
@@ -231,7 +231,7 @@ export default function Dashboard() {
 
         {/* Vehicle Status and Quick Actions */}
         <div className="space-y-6">
-          <VehicleStatusIndicator />
+          <VehiclePollingStatus />
           
           <Card>
             <CardHeader>
