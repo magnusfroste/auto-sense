@@ -8,7 +8,7 @@ import { useTrips } from '@/hooks/useTrips';
 import { Activity, Car, Clock, MapPin, PlayCircle, StopCircle } from 'lucide-react';
 
 export const VehiclePollingStatus = () => {
-  const { vehicleStates, isPolling, startAllVehiclePolling, hasActiveTrips } = useVehiclePolling();
+  const { vehicleStates, hasActiveTrips } = useVehiclePolling();
   const { connections } = useVehicleConnections();
   const { trips } = useTrips();
   
@@ -46,11 +46,11 @@ export const VehiclePollingStatus = () => {
       return { status: 'active-trip', color: 'destructive', text: 'Aktiv resa pågår' };
     }
     
-    if (isPolling && vehicleStates.length > 0) {
-      return { status: 'polling', color: 'default', text: 'Övervakar fordon' };
+    if (vehicleStates.length > 0) {
+      return { status: 'monitoring', color: 'default', text: 'Automatisk spårning aktiv' };
     }
     
-    return { status: 'inactive', color: 'secondary', text: 'Inaktiv' };
+    return { status: 'connected', color: 'secondary', text: 'Fordon anslutna' };
   };
 
   const pollingStatus = getPollingStatus();
@@ -63,7 +63,7 @@ export const VehiclePollingStatus = () => {
           Fordonsövervakning
         </CardTitle>
         <CardDescription>
-          Status för automatisk resregistrering
+          Status för automatisk resspårning via anslutna fordon
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -161,16 +161,6 @@ export const VehiclePollingStatus = () => {
           </div>
         )}
 
-        {connections.length > 0 && !isPolling && (
-          <Button 
-            onClick={startAllVehiclePolling} 
-            variant="outline" 
-            className="w-full"
-          >
-            <Activity className="mr-2 h-4 w-4" />
-            Starta fordonsövervakning
-          </Button>
-        )}
 
         <div className="text-xs text-muted-foreground">
           Senast uppdaterad: {lastUpdate.toLocaleTimeString('sv-SE')}
