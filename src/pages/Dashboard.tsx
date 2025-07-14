@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapComponent } from '@/components/map/MapComponent';
-import { VehiclePollingStatus } from '@/components/vehicle/VehiclePollingStatus';
+
 import { useTrips } from '@/hooks/useTrips';
 import { 
   MapPin, 
@@ -11,9 +11,7 @@ import {
   Route as RouteIcon, 
   Calendar,
   TrendingUp,
-  Car,
-  Play,
-  FileText
+  Car
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
@@ -91,17 +89,9 @@ export default function Dashboard() {
   return (
     <div className="p-4 lg:p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Översikt över dina resor och statistik</p>
-        </div>
-        <NavLink to="/trip/active">
-          <Button size="lg" className="w-full lg:w-auto">
-            <Play className="mr-2 h-4 w-4" />
-            Starta ny resa
-          </Button>
-        </NavLink>
+      <div>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">Översikt över dina resor och statistik</p>
       </div>
 
       {/* Stats Cards */}
@@ -159,7 +149,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Recent Trips */}
         <Card>
           <CardHeader>
@@ -229,39 +219,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Vehicle Status and Quick Actions */}
-        <div className="space-y-6">
-          <VehiclePollingStatus />
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Snabbåtgärder</CardTitle>
-              <CardDescription>
-                Vanliga uppgifter och funktioner
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <NavLink to="/trip/active" className="block">
-                <Button variant="outline" className="w-full justify-start">
-                  <Play className="mr-2 h-4 w-4" />
-                  Starta ny resa
-                </Button>
-              </NavLink>
-              <NavLink to="/trips" className="block">
-                <Button variant="outline" className="w-full justify-start">
-                  <MapPin className="mr-2 h-4 w-4" />
-                  Granska resor
-                </Button>
-              </NavLink>
-              <NavLink to="/reports" className="block">
-                <Button variant="outline" className="w-full justify-start">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Exportera rapport
-                </Button>
-              </NavLink>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
