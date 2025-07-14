@@ -99,6 +99,7 @@ export const useVehicleConnections = () => {
 
       // Listen for popup messages
       const handleMessage = (event: MessageEvent) => {
+        console.log('🎯 Received message from popup:', event.data, 'from origin:', event.origin);
         // Accept messages from popup and validate content instead of origin
         if (!event.data || typeof event.data !== 'object') return;
         
