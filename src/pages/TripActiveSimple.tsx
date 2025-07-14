@@ -1,125 +1,72 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { useGPSTrip } from '@/hooks/useGPSTrip';
-import { useVehicleTrip } from '@/hooks/useVehicleTrip';
-import { useVehiclePolling } from '@/hooks/useVehiclePolling';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
-import { useTrips } from '@/hooks/useTrips';
-import { TrackingModeSetup } from '@/components/onboarding/TrackingModeSetup';
-import { TripDebugPanel } from '@/components/vehicle/TripDebugPanel';
-import { VehiclePollingStatus } from '@/components/vehicle/VehiclePollingStatus';
 import { MapComponent } from '@/components/map/MapComponent';
 import { supabase } from '@/integrations/supabase/client';
-import { Car, MapPin, Activity, Clock, Play, Square, Route, Settings } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Car, MapPin, Gauge, Clock, RefreshCw } from 'lucide-react';
+
+interface VehicleState {
+  id: string;
+  last_odometer: number | null;
+  last_location: { latitude: number; longitude: number } | null;
+  last_poll_time: string | null;
+  polling_frequency: number;
+}
 
 export default function TripActiveSimple(): JSX.Element {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const { trip: gpsTrip, startTrip: startGPSTrip, stopTrip: stopGPSTrip } = useGPSTrip();
-  const { vehicleTrip, enableVehicleTracking } = useVehicleTrip();
-  const { hasActiveTrips, startAllVehiclePolling } = useVehiclePolling();
   const { connections } = useVehicleConnections();
-  const { trips } = useTrips();
-  const [trackingMode, setTrackingMode] = useState<'gps' | 'vehicle' | null>(null);
+  const [vehicleState, setVehicleState] = useState<VehicleState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
   useEffect(() => {
-    fetchTrackingMode();
-  }, [user]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastUpdate(new Date());
-    }, 10000);
-
+    fetchVehicleState();
+    const interval = setInterval(fetchVehicleState, 5000); // Uppdatera var 5:e sekund
     return () => clearInterval(interval);
-  }, []);
+  }, [connections]);
 
-  const fetchTrackingMode = async () => {
-    if (!user) return;
+  const fetchVehicleState = async () => {
+    if (connections.length === 0) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
-        .from('sense_profiles')
-        .select('tracking_mode')
-        .eq('id', user.id)
+        .from('vehicle_states')
+        .select('*')
+        .eq('connection_id', connections[0].id)
         .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
       
-      const mode = data?.tracking_mode as 'gps' | 'vehicle' | null;
-      
-      // Om ingen tracking mode är satt, visa onboarding
-      if (!mode) {
-        setShowOnboarding(true);
-        setLoading(false);
-        return;
+      if (data) {
+        // Parse the location data correctly
+        const location = data.last_location as any;
+        setVehicleState({
+          id: data.id,
+          last_odometer: data.last_odometer,
+          last_location: location ? {
+            latitude: location.latitude,
+            longitude: location.longitude
+          } : null,
+          last_poll_time: data.last_poll_time,
+          polling_frequency: data.polling_frequency
+        });
       }
-      
-      setTrackingMode(mode);
+      setLastUpdate(new Date());
     } catch (error) {
-      console.error('Error fetching tracking mode:', error);
-      setShowOnboarding(true); // Visa onboarding vid fel också
+      console.error('Error fetching vehicle state:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOnboardingComplete = (mode: 'gps' | 'vehicle') => {
-    setTrackingMode(mode);
-    setShowOnboarding(false);
-  };
-
-  const handleConnectVehicle = () => {
-    navigate('/settings?tab=vehicles');
-  };
-
-  const switchToGPS = async () => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('sense_profiles')
-        .update({ tracking_mode: 'gps' })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      
-      setTrackingMode('gps');
-    } catch (error) {
-      console.error('Error switching to GPS mode:', error);
-    }
-  };
-
-  // Get active trips and utility functions
-  const activeTrips = useMemo(() => trips.filter(trip => trip.trip_status === 'active'), [trips]);
-  const isAnyTripActive = gpsTrip.isActive || hasActiveTrips() || activeTrips.length > 0;
-
-  const formatDuration = (startTime: string): string => {
-    const start = new Date(startTime);
-    const now = new Date();
-    const diffMs = now.getTime() - start.getTime();
-    const diffMinutes = Math.floor(diffMs / 60000);
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
-  };
-
-  const formatTime = (timeString: string): string => {
-    return new Date(timeString).toLocaleTimeString('sv-SE', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const refreshData = () => {
+    fetchVehicleState();
   };
 
   if (loading) {
@@ -136,75 +83,61 @@ export default function TripActiveSimple(): JSX.Element {
     );
   }
 
-  // Visa onboarding om tracking mode inte är satt
-  if (showOnboarding) {
+  if (connections.length === 0) {
     return (
       <div className="p-4 lg:p-6">
         <Card>
-          <CardContent className="p-6">
-            <TrackingModeSetup 
-              onComplete={handleOnboardingComplete}
-              onConnectVehicle={handleConnectVehicle}
-            />
+          <CardContent className="p-6 text-center">
+            <Car className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-medium mb-2">Inga fordon anslutna</h3>
+            <p className="text-muted-foreground mb-4">
+              Du behöver ansluta ett fordon för att se live data.
+            </p>
+            <Button onClick={() => window.location.href = '/settings?tab=vehicles'}>
+              Anslut fordon
+            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  const vehicle = connections[0];
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Aktiv resa</h1>
+          <h1 className="text-3xl font-bold">Live fordondata</h1>
           <p className="text-muted-foreground">
-            {trackingMode === 'gps' ? 'Manuell GPS-spårning' : 'Automatisk fordonsspårning'}
+            {vehicle.make} {vehicle.model} {vehicle.year && `(${vehicle.year})`}
           </p>
         </div>
-        <div className="flex items-center space-x-3">
-          {isAnyTripActive && (
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-green-600">Resa pågår</span>
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/settings?tab=tracking')}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refreshData}
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Uppdatera
+        </Button>
       </div>
 
-      {/* Debug Panel - only in development */}
-      {process.env.NODE_ENV === 'development' && <TripDebugPanel />}
-      
-      {/* Vehicle Polling Status */}
-      <VehiclePollingStatus />
-
-      {/* Live Map for Active Trips */}
-      {activeTrips.length > 0 && (
+      {/* Live Map */}
+      {vehicleState?.last_location && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <MapPin className="mr-2 h-5 w-5" />
-              Live karta
+              Aktuell position
             </CardTitle>
           </CardHeader>
           <CardContent>
             <MapComponent
-              currentLocation={activeTrips[0]?.route_data?.coordinates?.[activeTrips[0].route_data.coordinates.length - 1] ? {
-                lat: activeTrips[0].route_data.coordinates[activeTrips[0].route_data.coordinates.length - 1][1],
-                lng: activeTrips[0].route_data.coordinates[activeTrips[0].route_data.coordinates.length - 1][0]
-              } : undefined}
-              startLocation={activeTrips[0]?.start_location ? {
-                lat: activeTrips[0].start_location.lat,
-                lng: activeTrips[0].start_location.lng,
-                address: activeTrips[0].start_location.address
-              } : undefined}
-              route={activeTrips[0]?.route_data}
+              currentLocation={{
+                lat: vehicleState.last_location.latitude,
+                lng: vehicleState.last_location.longitude
+              }}
               height="400px"
               showNavigation={true}
             />
@@ -212,264 +145,103 @@ export default function TripActiveSimple(): JSX.Element {
         </Card>
       )}
 
-      {/* Active Trips Overview */}
-      {activeTrips.length > 0 ? (
-        <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-          <CardHeader>
-            <CardTitle className="flex items-center text-green-700 dark:text-green-300">
-              <Play className="mr-2 h-5 w-5" />
-              Aktiva resor ({activeTrips.length})
+      {/* Live Vehicle Data */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Gauge className="mr-2 h-4 w-4" />
+              Odometer
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {activeTrips.map((trip) => {
-              const vehicleConnection = connections.find(c => c.id === trip.vehicle_connection_id);
-              
-              return (
-                <div key={trip.id} className="p-4 rounded-lg border bg-white dark:bg-gray-900 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="font-medium">
-                        {trip.start_location?.address || 'Okänd startpunkt'}
-                      </p>
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <span>Startad: {formatTime(trip.start_time)}</span>
-                        <span>•</span>
-                        <span>Varaktighet: {formatDuration(trip.start_time)}</span>
-                      </div>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <Badge variant={trip.trip_type === 'work' ? 'default' : 'secondary'}>
-                          {trip.trip_type === 'work' ? 'Arbete' : trip.trip_type === 'personal' ? 'Privat' : 'Okänd'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm font-medium">{trip.distance_km?.toFixed(1) || '0.0'} km</p>
-                    </div>
-                  </div>
-                  
-                  {vehicleConnection && (
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Car className="h-4 w-4" />
-                      <span>
-                        {vehicleConnection.make} {vehicleConnection.model} 
-                        {vehicleConnection.year && ` (${vehicleConnection.year})`}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {vehicleState?.last_odometer?.toLocaleString() || 'N/A'} km
+            </div>
+            <p className="text-xs text-muted-foreground">Total körsträcka</p>
           </CardContent>
         </Card>
-      ) : (
+
         <Card>
-          <CardContent className="py-8 text-center">
-            <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">Inga aktiva resor</h3>
-            <p className="text-muted-foreground">
-              {trackingMode === 'gps' 
-                ? 'Starta en GPS-resa för att se den här.' 
-                : 'Resor kommer att visas automatiskt när du börjar köra.'}
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <MapPin className="mr-2 h-4 w-4" />
+              Position
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">
+              {vehicleState?.last_location ? (
+                <>
+                  <div>{vehicleState.last_location.latitude.toFixed(6)}</div>
+                  <div>{vehicleState.last_location.longitude.toFixed(6)}</div>
+                </>
+              ) : (
+                'N/A'
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Lat/Lng koordinater</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Clock className="mr-2 h-4 w-4" />
+              Senast uppdaterad
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">
+              {vehicleState?.last_poll_time ? (
+                new Date(vehicleState.last_poll_time).toLocaleTimeString('sv-SE')
+              ) : (
+                'N/A'
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Polling: var {vehicleState?.polling_frequency || 120}s
             </p>
           </CardContent>
         </Card>
-      )}
+      </div>
 
-      {/* GPS Mode */}
-      {trackingMode === 'gps' && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <MapPin className="h-5 w-5" />
-                <span>GPS-spårning</span>
-              </CardTitle>
-              <Badge variant={gpsTrip.isActive ? "default" : "secondary"}>
-                {gpsTrip.isActive ? 'Aktiv' : 'Inaktiv'}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {gpsTrip.isActive ? (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <Route className="h-6 w-6 mx-auto mb-2 text-primary" />
-                    <p className="text-2xl font-bold">{gpsTrip.distance.toFixed(1)} km</p>
-                    <p className="text-sm text-muted-foreground">Avstånd</p>
-                  </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <Clock className="h-6 w-6 mx-auto mb-2 text-primary" />
-                    <p className="text-2xl font-bold">
-                      {gpsTrip.startTime ? Math.round((Date.now() - gpsTrip.startTime.getTime()) / 1000 / 60) : 0} min
-                    </p>
-                    <p className="text-sm text-muted-foreground">Tid</p>
-                  </div>
-                </div>
-                
-                <Button onClick={stopGPSTrip} variant="destructive" className="w-full" size="lg">
-                  <Square className="h-4 w-4 mr-2" />
-                  Stoppa resa
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-center text-muted-foreground py-8">
-                  Ingen aktiv resa. Tryck på knappen nedan för att starta GPS-spårning.
-                </p>
-                
-                <Button onClick={startGPSTrip} className="w-full" size="lg">
-                  <Play className="h-4 w-4 mr-2" />
-                  Starta GPS-resa
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Vehicle Mode */}
-      {trackingMode === 'vehicle' && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <Car className="h-5 w-5" />
-                <span>Automatisk fordons-spårning</span>
-              </CardTitle>
-              <Badge variant={vehicleTrip.isMonitoring ? "default" : "secondary"}>
-                {vehicleTrip.isMonitoring ? 'Aktiverad' : 'Inaktiv'}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {vehicleTrip.isMonitoring ? (
-              <>
-                <div className="text-center p-8 bg-muted rounded-lg">
-                  <Activity className="h-12 w-12 mx-auto mb-4 text-primary" />
-                  <p className="text-lg font-medium mb-2">Automatisk spårning är aktiverad</p>
-                  <p className="text-muted-foreground">
-                    Resor detekteras och spåras automatiskt när du kör med ditt anslutna fordon.
-                    Du behöver inte göra något - resor startar och stoppar automatiskt.
-                  </p>
-                </div>
-                
-                {vehicleTrip.vehicleStatus && (
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Status: {vehicleTrip.vehicleStatus}
-                    </p>
-                  </div>
-                )}
-                
-              </>
-            ) : (
-              <>
-                {connections.length === 0 ? (
-                  // No active vehicles - show fallback options
-                  <div className="space-y-4">
-                    <div className="text-center p-8 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                      <Car className="h-12 w-12 mx-auto mb-4 text-yellow-600 dark:text-yellow-400" />
-                      <p className="text-lg font-medium mb-2 text-yellow-800 dark:text-yellow-200">
-                        Inga fordon anslutna
-                      </p>
-                      <p className="text-yellow-700 dark:text-yellow-300 mb-4">
-                        Du har valt automatisk fordonsspårning men inga fordon är anslutna. 
-                        Välj ett alternativ nedan:
-                      </p>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Button 
-                        onClick={handleConnectVehicle}
-                        variant="outline"
-                        className="w-full"
-                        size="lg"
-                      >
-                        <Car className="h-4 w-4 mr-2" />
-                        Anslut fordon
-                      </Button>
-                      
-                      <Button 
-                        onClick={switchToGPS}
-                        variant="outline"
-                        className="w-full"
-                        size="lg"
-                      >
-                        <MapPin className="h-4 w-4 mr-2" />
-                        Byt till GPS
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  // Has vehicles but not monitoring
-                  <>
-                    <div className="text-center p-8 bg-muted rounded-lg">
-                      <Car className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-lg font-medium mb-2">Automatisk spårning är inte aktiverad</p>
-                      <p className="text-muted-foreground mb-4">
-                        Aktivera automatisk spårning för att få resor detekterade automatiskt från ditt fordon.
-                      </p>
-                    </div>
-                    
-                    <Button 
-                      onClick={() => {
-                        enableVehicleTracking();
-                        startAllVehiclePolling();
-                      }}
-                      className="w-full" 
-                      size="lg"
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      Aktivera automatisk spårning
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recent Trips Summary */}
+      {/* Vehicle Connection Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Senaste resor</CardTitle>
+          <CardTitle className="flex items-center">
+            <Car className="mr-2 h-5 w-5" />
+            Fordonsstatus
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {trips.filter(trip => trip.trip_status === 'completed').slice(0, 3).length > 0 ? (
-            <div className="space-y-3">
-              {trips.filter(trip => trip.trip_status === 'completed').slice(0, 3).map((trip) => (
-                <div key={trip.id} className="flex items-center justify-between p-3 rounded-lg border">
-                  <div>
-                    <p className="font-medium">
-                      {trip.start_location?.address || 'Okänd startpunkt'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatTime(trip.start_time)} - {trip.end_time ? formatTime(trip.end_time) : 'Pågående'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{trip.distance_km?.toFixed(1) || '0.0'} km</p>
-                    <Badge variant={trip.trip_type === 'work' ? 'default' : 'secondary'} className="text-xs">
-                      {trip.trip_type === 'work' ? 'Arbete' : trip.trip_type === 'personal' ? 'Privat' : 'Okänd'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span>Anslutning:</span>
+              <span className="font-medium text-green-600">Aktiv</span>
             </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">
-              Inga resor genomförda än
-            </p>
-          )}
+            <div className="flex items-center justify-between">
+              <span>VIN:</span>
+              <span className="font-mono text-sm">{vehicle.vin || 'N/A'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Smartcar ID:</span>
+              <span className="font-mono text-xs">{vehicle.smartcar_vehicle_id}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Ansluten:</span>
+              <span className="text-sm">
+                {new Date(vehicle.connected_at).toLocaleDateString('sv-SE')}
+              </span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Last Update Info */}
       <div className="text-center text-xs text-muted-foreground">
-        Senast uppdaterad: {lastUpdate.toLocaleTimeString('sv-SE')}
+        Sida uppdaterad: {lastUpdate.toLocaleTimeString('sv-SE')} • 
+        Data uppdateras automatiskt var 5:e sekund
       </div>
     </div>
   );
