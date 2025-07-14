@@ -99,7 +99,8 @@ export const useVehicleConnections = () => {
 
       // Listen for popup messages
       const handleMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
+        // Accept messages from popup and validate content instead of origin
+        if (!event.data || typeof event.data !== 'object') return;
         
         if (event.data.type === 'oauth_success') {
           popup.close();

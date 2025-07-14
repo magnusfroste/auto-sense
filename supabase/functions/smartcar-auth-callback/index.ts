@@ -26,10 +26,8 @@ Deno.serve(async (req) => {
 
     console.log('OAuth callback received:', { code: code?.substring(0, 10) + '...', state, error })
 
-    // Get the origin from the request or use environment variable
-    const origin = req.headers.get('origin') || 
-                  req.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
-                  Deno.env.get('SITE_URL') ||
+    // Always use SITE_URL for consistent origin handling
+    const origin = Deno.env.get('SITE_URL') || 
                   'https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com'
 
     if (error) {
@@ -86,10 +84,8 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Callback error:', error)
-    // Use the same origin detection as above
-    const origin = req.headers.get('origin') || 
-                  req.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
-                  Deno.env.get('SITE_URL') ||
+    // Use SITE_URL for consistent origin handling
+    const origin = Deno.env.get('SITE_URL') || 
                   'https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com'
     const errorUrl = new URL(`${origin}/settings`)
     errorUrl.searchParams.set('oauth_error', error.message)
