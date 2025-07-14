@@ -102,7 +102,8 @@ export const useVehicleConnections = () => {
         // Accept messages from popup and validate content instead of origin
         if (!event.data || typeof event.data !== 'object') return;
         
-        if (event.data.type === 'oauth_success') {
+        // Handle both old and new message types
+        if (event.data.type === 'oauth_success' || event.data.type === 'SMARTCAR_AUTH_SUCCESS') {
           popup.close();
           window.removeEventListener('message', handleMessage);
           handleOAuthSuccess(event.data.code, event.data.state);
