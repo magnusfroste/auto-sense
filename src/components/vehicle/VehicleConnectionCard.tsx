@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, Unplug, Calendar, Activity, Play, Pause, MapPin, Gauge, Fuel, Info, Target } from 'lucide-react';
+import { Car, Unplug, Calendar, Activity, MapPin, Gauge, Fuel, Info, Target } from 'lucide-react';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 import { useVehiclePolling } from '@/hooks/useVehiclePolling';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,9 +44,8 @@ interface VehicleConnectionCardProps {
 
 export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps) => {
   const { disconnectVehicle } = useVehicleConnections();
-  const { startVehiclePolling, getVehicleState } = useVehiclePolling();
+  const { getVehicleState } = useVehiclePolling();
   const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
@@ -87,33 +86,7 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
     }
   }, [connection.access_token, connection.smartcar_vehicle_id]);
 
-  const startPolling = useCallback(() => {
-    setIsPolling(true);
-    fetchVehicleData();
-  }, [fetchVehicleData]);
 
-  const stopPolling = useCallback(() => {
-    setIsPolling(false);
-  }, []);
-
-  const startTripPolling = useCallback(async () => {
-    await startVehiclePolling(connection.id);
-  }, [startVehiclePolling, connection.id]);
-
-  // Set up polling interval
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (isPolling) {
-      interval = setInterval(() => {
-        fetchVehicleData();
-      }, 30000); // Poll every 30 seconds
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isPolling, fetchVehicleData]);
 
   const getVehicleName = () => {
     if (vehicleData?.info) {
@@ -246,43 +219,12 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
             <Button
               variant="outline"
               size="sm"
-              onClick={startTripPolling}
-              disabled={loading || !!vehicleState}
-              className="flex-1"
-            >
-              <Target className="mr-2 h-4 w-4" />
-              {vehicleState ? 'Trip detection aktiv' : 'Aktivera trip detection'}
-            </Button>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={isPolling ? stopPolling : startPolling}
+              onClick={fetchVehicleData}
               disabled={loading}
               className="flex-1"
             >
-              {isPolling ? (
-                <>
-                  <Pause className="mr-2 h-4 w-4" />
-                  Stoppa polling
-                </>
-              ) : (
-                <>
-                  <Play className="mr-2 h-4 w-4" />
-                  Starta polling
-                </>
-              )}
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchVehicleData}
-              disabled={loading || isPolling}
-            >
-              <Info className="h-4 w-4" />
+              <Info className="mr-2 h-4 w-4" />
+              Uppdatera data
             </Button>
           </div>
           

@@ -1156,6 +1156,13 @@ export type Database = {
             referencedRelation: "track_tracks"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "track_leaderboards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       track_ratings: {
