@@ -26,16 +26,22 @@ Deno.serve(async (req) => {
 
     console.log('OAuth callback received:', { code: code?.substring(0, 10) + '...', state, error })
 
+    // Get the origin from the request or use environment variable
+    const origin = req.headers.get('origin') || 
+                  req.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
+                  Deno.env.get('SITE_URL') ||
+                  'https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com'
+
     if (error) {
       console.error('OAuth error:', error)
-      const errorUrl = new URL('https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com/smartcar-test')
+      const errorUrl = new URL(`${origin}/smartcar-test`)
       errorUrl.searchParams.set('oauth_error', error)
       return Response.redirect(errorUrl.toString())
     }
 
     if (!code || !state) {
       console.error('Missing required parameters:', { hasCode: !!code, hasState: !!state })
-      const errorUrl = new URL('https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com/smartcar-test')
+      const errorUrl = new URL(`${origin}/smartcar-test`)
       errorUrl.searchParams.set('oauth_error', 'Missing required parameters')
       return Response.redirect(errorUrl.toString())
     }
@@ -46,7 +52,7 @@ Deno.serve(async (req) => {
     // and let the frontend handle the automatic activation
     
     console.log('Redirecting to test page with OAuth success')
-    const successUrl = new URL('https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com/smartcar-test')
+    const successUrl = new URL(`${origin}/smartcar-test`)
     successUrl.searchParams.set('oauth_success', 'true')
     successUrl.searchParams.set('code', code)
     successUrl.searchParams.set('state', state)
@@ -56,7 +62,12 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Callback error:', error)
-    const errorUrl = new URL('https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com/smartcar-test')
+    // Use the same origin detection as above
+    const origin = req.headers.get('origin') || 
+                  req.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
+                  Deno.env.get('SITE_URL') ||
+                  'https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com'
+    const errorUrl = new URL(`${origin}/smartcar-test`)
     errorUrl.searchParams.set('oauth_error', error.message)
     return Response.redirect(errorUrl.toString())
   }
