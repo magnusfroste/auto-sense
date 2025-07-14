@@ -205,8 +205,16 @@ export const useVehicleConnections = () => {
       console.log('📥 POST response:', { data, error, hasData: !!data, hasError: !!error });
 
       if (error) {
-        console.error('❌ Edge function error:', error);
-        throw new Error(error.message || 'Unknown server error');
+        console.error('❌ Edge function error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          status: error.status,
+          statusText: error.statusText,
+          fullError: error
+        });
+        throw new Error(`Smartcar error: ${error.message || error.statusText || 'Unknown server error'} (Status: ${error.status || 'unknown'})`);
       }
 
       // Clean up localStorage
