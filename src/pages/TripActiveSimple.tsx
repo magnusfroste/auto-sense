@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,9 @@ import { useVehiclePolling } from '@/hooks/useVehiclePolling';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 import { useTrips } from '@/hooks/useTrips';
 import { TrackingModeSetup } from '@/components/onboarding/TrackingModeSetup';
+import { TripDebugPanel } from '@/components/vehicle/TripDebugPanel';
+import { VehiclePollingStatus } from '@/components/vehicle/VehiclePollingStatus';
+import { MapComponent } from '@/components/map/MapComponent';
 import { supabase } from '@/integrations/supabase/client';
 import { Car, MapPin, Activity, Clock, Play, Square, Route, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -24,10 +27,19 @@ export default function TripActiveSimple(): JSX.Element {
   const [trackingMode, setTrackingMode] = useState<'gps' | 'vehicle' | null>(null);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
   useEffect(() => {
     fetchTrackingMode();
   }, [user]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLastUpdate(new Date());
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchTrackingMode = async () => {
     if (!user) return;
@@ -85,9 +97,30 @@ export default function TripActiveSimple(): JSX.Element {
     }
   };
 
-  // Get active trips
-  const activeTrips = trips.filter(trip => trip.trip_status === 'active');
+  // Get active trips and utility functions
+  const activeTrips = useMemo(() => trips.filter(trip => trip.trip_status === 'active'), [trips]);
   const isAnyTripActive = gpsTrip.isActive || hasActiveTrips() || activeTrips.length > 0;
+
+  const formatDuration = (startTime: string): string => {
+    const start = new Date(startTime);
+    const now = new Date();
+    const diffMs = now.getTime() - start.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  const formatTime = (timeString: string): string => {
+    return new Date(timeString).toLocaleTimeString('sv-SE', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   if (loading) {
     return (
@@ -145,8 +178,42 @@ export default function TripActiveSimple(): JSX.Element {
         </div>
       </div>
 
-      {/* Active Trips Overview */}
+      {/* Debug Panel - only in development */}
+      {process.env.NODE_ENV === 'development' && <TripDebugPanel />}
+      
+      {/* Vehicle Polling Status */}
+      <VehiclePollingStatus />
+
+      {/* Live Map for Active Trips */}
       {activeTrips.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <MapPin className="mr-2 h-5 w-5" />
+              Live karta
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MapComponent
+              currentLocation={activeTrips[0]?.route_data?.coordinates?.[activeTrips[0].route_data.coordinates.length - 1] ? {
+                lat: activeTrips[0].route_data.coordinates[activeTrips[0].route_data.coordinates.length - 1][1],
+                lng: activeTrips[0].route_data.coordinates[activeTrips[0].route_data.coordinates.length - 1][0]
+              } : undefined}
+              startLocation={activeTrips[0]?.start_location ? {
+                lat: activeTrips[0].start_location.lat,
+                lng: activeTrips[0].start_location.lng,
+                address: activeTrips[0].start_location.address
+              } : undefined}
+              route={activeTrips[0]?.route_data}
+              height="400px"
+              showNavigation={true}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Trips Overview */}
+      {activeTrips.length > 0 ? (
         <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
           <CardHeader>
             <CardTitle className="flex items-center text-green-700 dark:text-green-300">
@@ -154,25 +221,57 @@ export default function TripActiveSimple(): JSX.Element {
               Aktiva resor ({activeTrips.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {activeTrips.map((trip) => (
-              <div key={trip.id} className="flex items-center justify-between p-3 rounded-lg border bg-white dark:bg-gray-900">
-                <div>
-                  <p className="font-medium">
-                    {trip.start_location?.address || 'Startpunkt'} → {trip.end_location?.address || 'Målet'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Startad: {new Date(trip.start_time).toLocaleTimeString('sv-SE')}
-                  </p>
+          <CardContent className="space-y-4">
+            {activeTrips.map((trip) => {
+              const vehicleConnection = connections.find(c => c.id === trip.vehicle_connection_id);
+              
+              return (
+                <div key={trip.id} className="p-4 rounded-lg border bg-white dark:bg-gray-900 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="font-medium">
+                        {trip.start_location?.address || 'Okänd startpunkt'}
+                      </p>
+                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                        <span>Startad: {formatTime(trip.start_time)}</span>
+                        <span>•</span>
+                        <span>Varaktighet: {formatDuration(trip.start_time)}</span>
+                      </div>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={trip.trip_type === 'work' ? 'default' : 'secondary'}>
+                          {trip.trip_type === 'work' ? 'Arbete' : trip.trip_type === 'personal' ? 'Privat' : 'Okänd'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-medium">{trip.distance_km?.toFixed(1) || '0.0'} km</p>
+                    </div>
+                  </div>
+                  
+                  {vehicleConnection && (
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <Car className="h-4 w-4" />
+                      <span>
+                        {vehicleConnection.make} {vehicleConnection.model} 
+                        {vehicleConnection.year && ` (${vehicleConnection.year})`}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">{trip.distance_km?.toFixed(1) || '0'} km</p>
-                  <Badge variant={trip.trip_type === 'work' ? 'default' : 'secondary'}>
-                    {trip.trip_type === 'work' ? 'Arbete' : 'Privat'}
-                  </Badge>
-                </div>
-              </div>
-            ))}
+              );
+            })}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-medium mb-2">Inga aktiva resor</h3>
+            <p className="text-muted-foreground">
+              {trackingMode === 'gps' 
+                ? 'Starta en GPS-resa för att se den här.' 
+                : 'Resor kommer att visas automatiskt när du börjar köra.'}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -332,6 +431,46 @@ export default function TripActiveSimple(): JSX.Element {
           </CardContent>
         </Card>
       )}
+
+      {/* Recent Trips Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Senaste resor</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {trips.filter(trip => trip.trip_status === 'completed').slice(0, 3).length > 0 ? (
+            <div className="space-y-3">
+              {trips.filter(trip => trip.trip_status === 'completed').slice(0, 3).map((trip) => (
+                <div key={trip.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div>
+                    <p className="font-medium">
+                      {trip.start_location?.address || 'Okänd startpunkt'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatTime(trip.start_time)} - {trip.end_time ? formatTime(trip.end_time) : 'Pågående'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">{trip.distance_km?.toFixed(1) || '0.0'} km</p>
+                    <Badge variant={trip.trip_type === 'work' ? 'default' : 'secondary'} className="text-xs">
+                      {trip.trip_type === 'work' ? 'Arbete' : trip.trip_type === 'personal' ? 'Privat' : 'Okänd'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">
+              Inga resor genomförda än
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Last Update Info */}
+      <div className="text-center text-xs text-muted-foreground">
+        Senast uppdaterad: {lastUpdate.toLocaleTimeString('sv-SE')}
+      </div>
     </div>
   );
 }
