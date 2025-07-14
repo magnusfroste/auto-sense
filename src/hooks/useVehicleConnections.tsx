@@ -86,49 +86,9 @@ export const useVehicleConnections = () => {
       
       console.log('Opening OAuth popup:', authData.oauth_url);
 
-      // Open popup for OAuth
-      const popup = window.open(
-        authData.oauth_url,
-        'smartcar_oauth',
-        'width=500,height=600,scrollbars=yes,resizable=yes'
-      );
-
-      if (!popup) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
-
-      // Listen for popup messages
-      const handleMessage = (event: MessageEvent) => {
-        console.log('🎯 Received message from popup:', event.data, 'from origin:', event.origin);
-        // Accept messages from popup and validate content instead of origin
-        if (!event.data || typeof event.data !== 'object') return;
-        
-        // Handle both old and new message types
-        if (event.data.type === 'oauth_success' || event.data.type === 'SMARTCAR_AUTH_SUCCESS') {
-          popup.close();
-          window.removeEventListener('message', handleMessage);
-          handleOAuthSuccess(event.data.code, event.data.state);
-        } else if (event.data.type === 'oauth_error') {
-          popup.close();
-          window.removeEventListener('message', handleMessage);
-          toast({
-            title: "Fel",
-            description: "OAuth-fel: " + event.data.error,
-            variant: "destructive",
-          });
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-
-      // Check if popup was closed manually
-      const checkClosed = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkClosed);
-          window.removeEventListener('message', handleMessage);
-          console.log('Popup was closed manually');
-        }
-      }, 1000);
+      // Redirect to OAuth URL (will come back to /settings with parameters)
+      console.log('Redirecting to OAuth URL:', authData.oauth_url);
+      window.location.href = authData.oauth_url;
 
     } catch (error: any) {
       console.error('Error connecting vehicle:', error);
@@ -170,25 +130,12 @@ export const useVehicleConnections = () => {
     fetchConnections();
   }, [fetchConnections]);
 
-  // Handle OAuth callback from URL parameters (after redirect)
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const oauthSuccess = urlParams.get('oauth_success');
-    const oauthError = urlParams.get('oauth_error');
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-
-    if (oauthError) {
-      toast({
-        title: "OAuth Fel",
-        description: `OAuth error: ${oauthError}`,
-        variant: "destructive"
-      });
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (oauthSuccess && code) {
-      handleOAuthSuccess(code, state);
-    }
+  // Expose OAuth redirect handler for Settings page
+  const handleOAuthRedirect = useCallback(async (code: string, state: string, autoStart: boolean = false) => {
+    console.log('🎯 handleOAuthRedirect called with:', { code: code?.substring(0, 10) + '...', state, autoStart });
+    await handleOAuthSuccess(code, state);
+    // Clean URL after processing
+    window.history.replaceState({}, '', window.location.pathname);
   }, []);
 
   const handleOAuthSuccess = async (code: string, state: string | null) => {
@@ -313,6 +260,7 @@ export const useVehicleConnections = () => {
     loading,
     connectVehicle,
     disconnectVehicle,
-    refreshConnections: fetchConnections
+    refreshConnections: fetchConnections,
+    handleOAuthRedirect
   };
 };

@@ -56,13 +56,35 @@ interface Profile {
 const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { connections: vehicles } = useVehicleConnections();
+  const { connections: vehicles, handleOAuthRedirect } = useVehicleConnections();
   const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
   const defaultTab = searchParams.get('tab') || 'profile';
+
+  // Handle OAuth redirect on settings page
+  useEffect(() => {
+    const oauthSuccess = searchParams.get('oauth_success');
+    const oauthError = searchParams.get('oauth_error');
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const autoStart = searchParams.get('auto_start');
+
+    if (oauthError) {
+      toast({
+        title: "OAuth Fel",
+        description: `OAuth error: ${oauthError}`,
+        variant: "destructive"
+      });
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (oauthSuccess && code && state) {
+      console.log('🎯 Settings page detected OAuth success, calling handleOAuthRedirect');
+      handleOAuthRedirect(code, state, autoStart === 'true');
+    }
+  }, [searchParams, toast, handleOAuthRedirect]);
 
   useEffect(() => {
     if (user) {
