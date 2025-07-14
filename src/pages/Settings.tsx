@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,9 +57,12 @@ const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { connections: vehicles } = useVehicleConnections();
+  const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  const defaultTab = searchParams.get('tab') || 'profile';
 
   useEffect(() => {
     if (user) {
@@ -158,7 +162,7 @@ const Settings = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" className="flex items-center space-x-1">
             <User className="h-4 w-4" />
@@ -328,6 +332,16 @@ const Settings = () => {
         {/* Vehicles Tab */}
         <TabsContent value="vehicles" className="space-y-6">
           <VehicleConnectionSection />
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Spårningsinställningar</CardTitle>
+              <CardDescription>Välj hur du vill spåra dina resor</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TrackingModeSelector />
+            </CardContent>
+          </Card>
           
           <Card>
             <CardHeader>

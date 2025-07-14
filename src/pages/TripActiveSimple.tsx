@@ -7,17 +7,21 @@ import { useGPSTrip } from '@/hooks/useGPSTrip';
 import { useVehicleTrip } from '@/hooks/useVehicleTrip';
 import { useVehiclePolling } from '@/hooks/useVehiclePolling';
 import { useTrips } from '@/hooks/useTrips';
+import { TrackingModeSetup } from '@/components/onboarding/TrackingModeSetup';
 import { supabase } from '@/integrations/supabase/client';
-import { Car, MapPin, Activity, Clock, Play, Pause, Square, Route } from 'lucide-react';
+import { Car, MapPin, Activity, Clock, Play, Square, Route, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function TripActiveSimple(): JSX.Element {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { trip: gpsTrip, startTrip: startGPSTrip, stopTrip: stopGPSTrip } = useGPSTrip();
   const { vehicleTrip, enableVehicleTracking } = useVehicleTrip();
   const { hasActiveTrips, startAllVehiclePolling } = useVehiclePolling();
   const { trips } = useTrips();
   const [trackingMode, setTrackingMode] = useState<'gps' | 'vehicle' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     fetchTrackingMode();
@@ -35,13 +39,31 @@ export default function TripActiveSimple(): JSX.Element {
 
       if (error) throw error;
       
-      setTrackingMode((data?.tracking_mode as 'gps' | 'vehicle') || 'gps');
+      const mode = data?.tracking_mode as 'gps' | 'vehicle' | null;
+      
+      // Om ingen tracking mode är satt, visa onboarding
+      if (!mode) {
+        setShowOnboarding(true);
+        setLoading(false);
+        return;
+      }
+      
+      setTrackingMode(mode);
     } catch (error) {
       console.error('Error fetching tracking mode:', error);
-      setTrackingMode('gps'); // Default fallback
+      setShowOnboarding(true); // Visa onboarding vid fel också
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOnboardingComplete = (mode: 'gps' | 'vehicle') => {
+    setTrackingMode(mode);
+    setShowOnboarding(false);
+  };
+
+  const handleConnectVehicle = () => {
+    navigate('/settings?tab=vehicles');
   };
 
   // Get active trips
@@ -62,19 +84,46 @@ export default function TripActiveSimple(): JSX.Element {
     );
   }
 
+  // Visa onboarding om tracking mode inte är satt
+  if (showOnboarding) {
+    return (
+      <div className="p-4 lg:p-6">
+        <Card>
+          <CardContent className="p-6">
+            <TrackingModeSetup 
+              onComplete={handleOnboardingComplete}
+              onConnectVehicle={handleConnectVehicle}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Aktiv resa</h1>
-          <p className="text-muted-foreground">Spåra din resa med GPS eller anslutna fordon</p>
+          <p className="text-muted-foreground">
+            {trackingMode === 'gps' ? 'Manuell GPS-spårning' : 'Automatisk fordonsspårning'}
+          </p>
         </div>
-        {isAnyTripActive && (
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium text-green-600">Resa pågår</span>
-          </div>
-        )}
+        <div className="flex items-center space-x-3">
+          {isAnyTripActive && (
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-green-600">Resa pågår</span>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/settings?tab=tracking')}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Active Trips Overview */}
