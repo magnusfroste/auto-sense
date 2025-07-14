@@ -376,19 +376,64 @@ async function updateVehicleState(connectionId: string, state: any) {
 
   const stateData = {
     connection_id: connectionId,
-    ...state,
+    last_odometer: state.last_odometer,
+    last_location: state.last_location,
+    last_poll_time: state.last_poll_time,
+    current_trip_id: state.current_trip_id,
+    polling_frequency: state.polling_frequency || 120,
     updated_at: new Date().toISOString()
   }
 
-  // Upsert vehicle state
-  await fetch(`${supabaseUrl}/rest/v1/vehicle_states`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${supabaseServiceKey}`,
-      'apikey': supabaseServiceKey,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates'
-    },
-    body: JSON.stringify(stateData)
-  })
+  console.log('📝 Updating vehicle state:', stateData)
+
+  try {
+    // First try to update existing record
+    const updateResponse = await fetch(`${supabaseUrl}/rest/v1/vehicle_states?connection_id=eq.${connectionId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        last_odometer: state.last_odometer,
+        last_location: state.last_location,
+        last_poll_time: state.last_poll_time,
+        current_trip_id: state.current_trip_id,
+        polling_frequency: state.polling_frequency || 120,
+        updated_at: new Date().toISOString()
+      })
+    })
+
+    if (updateResponse.ok) {
+      const result = await updateResponse.json()
+      if (result.length === 0) {
+        // No rows updated, record doesn't exist - create new one
+        console.log('🔄 No existing record found, creating new one')
+        const insertResponse = await fetch(`${supabaseUrl}/rest/v1/vehicle_states`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'apikey': supabaseServiceKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(stateData)
+        })
+
+        if (!insertResponse.ok) {
+          const error = await insertResponse.text()
+          console.error('❌ Failed to insert vehicle state:', error)
+        } else {
+          console.log('✅ Vehicle state created successfully')
+        }
+      } else {
+        console.log('✅ Vehicle state updated successfully')
+      }
+    } else {
+      const error = await updateResponse.text()
+      console.error('❌ Failed to update vehicle state:', error)
+    }
+  } catch (error) {
+    console.error('❌ Error updating vehicle state:', error)
+  }
 }
