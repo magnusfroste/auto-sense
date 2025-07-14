@@ -65,6 +65,7 @@ const Settings = () => {
   const defaultTab = searchParams.get('tab') || 'profile';
 
   // Handle OAuth redirect on settings page
+  console.log('🔍 Settings component mounted/updated, checking URL params...');
   useEffect(() => {
     const oauthSuccess = searchParams.get('oauth_success');
     const oauthError = searchParams.get('oauth_error');
