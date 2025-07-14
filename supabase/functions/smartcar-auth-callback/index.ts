@@ -51,14 +51,38 @@ Deno.serve(async (req) => {
     // logic happens in the frontend, so we'll redirect back with success params
     // and let the frontend handle the automatic activation
     
-    console.log('Redirecting to settings page with OAuth success')
-    const successUrl = new URL(`${origin}/settings`)
-    successUrl.searchParams.set('oauth_success', 'true')
-    successUrl.searchParams.set('code', code)
-    successUrl.searchParams.set('state', state)
-    successUrl.searchParams.set('auto_start', 'true') // Signal to automatically start everything
-    
-    return Response.redirect(successUrl.toString())
+    // Return HTML that handles both popup and redirect scenarios
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>OAuth Success</title>
+        </head>
+        <body>
+          <script>
+            if (window.opener) {
+              // This is a popup, send message to parent
+              console.log('Sending message to parent window');
+              window.opener.postMessage({
+                type: 'oauth_success',
+                code: '${code}',
+                state: '${state}'
+              }, '${origin}');
+              window.close();
+            } else {
+              // This is a redirect, go to settings page
+              console.log('Redirecting to settings page');
+              window.location.href = '${origin}/settings?oauth_success=true&code=${code}&state=${state}&auto_start=true';
+            }
+          </script>
+          <p>Processing OAuth response...</p>
+        </body>
+      </html>
+    `;
+
+    return new Response(html, {
+      headers: { ...corsHeaders, 'Content-Type': 'text/html' }
+    })
 
   } catch (error) {
     console.error('Callback error:', error)

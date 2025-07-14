@@ -84,10 +84,48 @@ export const useVehicleConnections = () => {
       localStorage.setItem('smartcar_user_id', user.id);
       localStorage.setItem('smartcar_test_mode', testMode.toString());
       
-      console.log('Redirecting to OAuth URL:', authData.oauth_url);
+      console.log('Opening OAuth popup:', authData.oauth_url);
 
-      // Use full page redirect instead of popup (matches Smartcar's recommended approach)
-      window.location.href = authData.oauth_url;
+      // Open popup for OAuth
+      const popup = window.open(
+        authData.oauth_url,
+        'smartcar_oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+
+      // Listen for popup messages
+      const handleMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        
+        if (event.data.type === 'oauth_success') {
+          popup.close();
+          window.removeEventListener('message', handleMessage);
+          handleOAuthSuccess(event.data.code, event.data.state);
+        } else if (event.data.type === 'oauth_error') {
+          popup.close();
+          window.removeEventListener('message', handleMessage);
+          toast({
+            title: "Fel",
+            description: "OAuth-fel: " + event.data.error,
+            variant: "destructive",
+          });
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      // Check if popup was closed manually
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', handleMessage);
+          console.log('Popup was closed manually');
+        }
+      }, 1000);
 
     } catch (error: any) {
       console.error('Error connecting vehicle:', error);
