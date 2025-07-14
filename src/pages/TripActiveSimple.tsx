@@ -103,19 +103,18 @@ export default function TripActiveSimple(): JSX.Element {
     setLoading(true);
     
     try {
-      // Trigga polling först
+      // Force fetch latest data immediately
+      await fetchVehicleState();
+      
+      // Then trigger polling for future updates
       await triggerPolling();
       
-      // Vänta lite för att låta polling uppdatera databasen
-      setTimeout(async () => {
-        await fetchVehicleState();
-        setLoading(false);
-        setLastUpdate(new Date());
-        console.log('✅ Manual refresh completed');
-      }, 2000);
+      setLastUpdate(new Date());
+      console.log('✅ Manual refresh completed');
       
     } catch (error) {
       console.error('❌ Manual refresh error:', error);
+    } finally {
       setLoading(false);
     }
   };
