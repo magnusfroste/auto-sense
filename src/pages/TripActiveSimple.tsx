@@ -156,7 +156,7 @@ export default function TripActiveSimple(): JSX.Element {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {vehicleState?.last_odometer?.toLocaleString() || 'N/A'} km
+              {vehicleState?.last_odometer?.toFixed(1) || 'N/A'} km
             </div>
             <p className="text-xs text-muted-foreground">Total körsträcka</p>
           </CardContent>
