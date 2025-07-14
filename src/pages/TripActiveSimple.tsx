@@ -245,15 +245,6 @@ export default function TripActiveSimple(): JSX.Element {
                   </div>
                 )}
                 
-                <Button 
-                  onClick={startAllVehiclePolling}
-                  variant="outline"
-                  className="w-full" 
-                  size="lg"
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Starta polling
-                </Button>
               </>
             ) : (
               <>

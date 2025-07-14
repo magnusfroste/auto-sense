@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.5'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -38,12 +40,17 @@ Deno.serve(async (req) => {
       return Response.redirect(errorUrl.toString())
     }
 
-    // Redirect back to test page with OAuth success parameters
+    // After successful OAuth, we need to check if vehicle connection was successful
+    // and automatically start polling if it was. The actual vehicle connection
+    // logic happens in the frontend, so we'll redirect back with success params
+    // and let the frontend handle the automatic activation
+    
     console.log('Redirecting to test page with OAuth success')
     const successUrl = new URL('https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com/smartcar-test')
     successUrl.searchParams.set('oauth_success', 'true')
     successUrl.searchParams.set('code', code)
     successUrl.searchParams.set('state', state)
+    successUrl.searchParams.set('auto_start', 'true') // Signal to automatically start everything
     
     return Response.redirect(successUrl.toString())
 

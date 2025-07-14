@@ -219,10 +219,39 @@ export const useVehicleConnections = () => {
       console.log('OAuth completed successfully, fetching updated connections...');
       await fetchConnections();
       
+      // Automatically enable vehicle tracking and start polling
+      console.log('Automatically enabling vehicle tracking and starting polling...');
+      try {
+        // Update user's tracking mode to 'vehicle'
+        const { error: profileError } = await supabase
+          .from('sense_profiles')
+          .update({ tracking_mode: 'vehicle' })
+          .eq('id', userId);
+
+        if (profileError) {
+          console.error('Error updating tracking mode:', profileError);
+        } else {
+          console.log('Successfully updated tracking mode to vehicle');
+        }
+
+        // Start vehicle polling for all connected vehicles
+        const { error: pollingError } = await supabase.functions.invoke('vehicle-trip-polling', {
+          body: { action: 'start_all' }
+        });
+
+        if (pollingError) {
+          console.error('Error starting vehicle polling:', pollingError);
+        } else {
+          console.log('Successfully started vehicle polling');
+        }
+      } catch (autoError) {
+        console.error('Error in automatic setup:', autoError);
+      }
+      
       const vehicleCount = data?.connections_stored || 1;
       toast({
         title: "Fordon anslutet!",
-        description: `${vehicleCount} fordon har anslutits och kan nu automatiskt spåra resor`
+        description: `${vehicleCount} fordon har anslutits och automatisk spårning är nu aktiverad`
       });
 
     } catch (error: any) {

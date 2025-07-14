@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
-import { TrackingModeSelector } from "@/components/settings/TrackingModeSelector";
+
 import { VehicleConnectionSection } from "@/components/vehicle/VehicleConnectionSection";
 import { useVehicleConnections } from "@/hooks/useVehicleConnections";
 import { User, Settings as SettingsIcon, Car, Bell, Download, Shield, Globe, Palette, LogOut } from "lucide-react";
@@ -333,15 +333,6 @@ const Settings = () => {
         <TabsContent value="vehicles" className="space-y-6">
           <VehicleConnectionSection />
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Spårningsinställningar</CardTitle>
-              <CardDescription>Välj hur du vill spåra dina resor</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <TrackingModeSelector />
-            </CardContent>
-          </Card>
           
           <Card>
             <CardHeader>
@@ -619,7 +610,6 @@ const Settings = () => {
         {/* Appearance Tab */}
         <TabsContent value="appearance" className="space-y-6">
           <ThemeSelector />
-          <TrackingModeSelector />
         </TabsContent>
       </Tabs>
     </div>
