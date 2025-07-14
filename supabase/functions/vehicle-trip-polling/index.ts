@@ -62,8 +62,8 @@ async function pollAllActiveVehicles() {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   
-  // Fetch all active vehicle connections
-  const connectionsResponse = await fetch(`${supabaseUrl}/rest/v1/vehicle_connections?is_active=eq.true&select=*`, {
+  // Fetch all vehicle connections (no is_active column anymore)
+  const connectionsResponse = await fetch(`${supabaseUrl}/rest/v1/vehicle_connections?select=*`, {
     headers: {
       'Authorization': `Bearer ${supabaseServiceKey}`,
       'apikey': supabaseServiceKey,
@@ -76,7 +76,7 @@ async function pollAllActiveVehicles() {
   }
 
   const connections = await connectionsResponse.json()
-  console.log(`Found ${connections.length} active vehicle connections`)
+  console.log(`Found ${connections.length} vehicle connections to poll`)
 
   // Poll each vehicle
   for (const connection of connections) {
