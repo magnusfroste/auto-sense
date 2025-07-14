@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGPSTrip } from '@/hooks/useGPSTrip';
 import { useVehicleTrip } from '@/hooks/useVehicleTrip';
 import { useVehiclePolling } from '@/hooks/useVehiclePolling';
+import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 import { useTrips } from '@/hooks/useTrips';
 import { TrackingModeSetup } from '@/components/onboarding/TrackingModeSetup';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +19,7 @@ export default function TripActiveSimple(): JSX.Element {
   const { trip: gpsTrip, startTrip: startGPSTrip, stopTrip: stopGPSTrip } = useGPSTrip();
   const { vehicleTrip, enableVehicleTracking } = useVehicleTrip();
   const { hasActiveTrips, startAllVehiclePolling } = useVehiclePolling();
+  const { connections } = useVehicleConnections();
   const { trips } = useTrips();
   const [trackingMode, setTrackingMode] = useState<'gps' | 'vehicle' | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,23 @@ export default function TripActiveSimple(): JSX.Element {
 
   const handleConnectVehicle = () => {
     navigate('/settings?tab=vehicles');
+  };
+
+  const switchToGPS = async () => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('sense_profiles')
+        .update({ tracking_mode: 'gps' })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      setTrackingMode('gps');
+    } catch (error) {
+      console.error('Error switching to GPS mode:', error);
+    }
   };
 
   // Get active trips
@@ -248,25 +267,66 @@ export default function TripActiveSimple(): JSX.Element {
               </>
             ) : (
               <>
-                <div className="text-center p-8 bg-muted rounded-lg">
-                  <Car className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-lg font-medium mb-2">Automatisk spårning är inte aktiverad</p>
-                  <p className="text-muted-foreground mb-4">
-                    Aktivera automatisk spårning för att få resor detekterade automatiskt från ditt fordon.
-                  </p>
-                </div>
-                
-                <Button 
-                  onClick={() => {
-                    enableVehicleTracking();
-                    startAllVehiclePolling();
-                  }}
-                  className="w-full" 
-                  size="lg"
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Aktivera automatisk spårning
-                </Button>
+                {connections.filter(conn => conn.is_active).length === 0 ? (
+                  // No active vehicles - show fallback options
+                  <div className="space-y-4">
+                    <div className="text-center p-8 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <Car className="h-12 w-12 mx-auto mb-4 text-yellow-600 dark:text-yellow-400" />
+                      <p className="text-lg font-medium mb-2 text-yellow-800 dark:text-yellow-200">
+                        Inga fordon anslutna
+                      </p>
+                      <p className="text-yellow-700 dark:text-yellow-300 mb-4">
+                        Du har valt automatisk fordonsspårning men inga fordon är anslutna. 
+                        Välj ett alternativ nedan:
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Button 
+                        onClick={handleConnectVehicle}
+                        variant="outline"
+                        className="w-full"
+                        size="lg"
+                      >
+                        <Car className="h-4 w-4 mr-2" />
+                        Anslut fordon
+                      </Button>
+                      
+                      <Button 
+                        onClick={switchToGPS}
+                        variant="outline"
+                        className="w-full"
+                        size="lg"
+                      >
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Byt till GPS
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Has vehicles but not monitoring
+                  <>
+                    <div className="text-center p-8 bg-muted rounded-lg">
+                      <Car className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-lg font-medium mb-2">Automatisk spårning är inte aktiverad</p>
+                      <p className="text-muted-foreground mb-4">
+                        Aktivera automatisk spårning för att få resor detekterade automatiskt från ditt fordon.
+                      </p>
+                    </div>
+                    
+                    <Button 
+                      onClick={() => {
+                        enableVehicleTracking();
+                        startAllVehiclePolling();
+                      }}
+                      className="w-full" 
+                      size="lg"
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Aktivera automatisk spårning
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </CardContent>

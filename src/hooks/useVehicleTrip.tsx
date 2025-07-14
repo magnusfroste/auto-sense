@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import { useTrips } from './useTrips';
+import { useVehicleConnections } from './useVehicleConnections';
 import { supabase } from '@/integrations/supabase/client';
 
 interface VehicleTrip {
@@ -14,6 +15,7 @@ export function useVehicleTrip() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { fetchTrips } = useTrips();
+  const { connections } = useVehicleConnections();
   
   const [vehicleTrip, setVehicleTrip] = useState<VehicleTrip>({
     isMonitoring: false,
@@ -26,7 +28,7 @@ export function useVehicleTrip() {
 
     // Check if user has vehicle tracking mode enabled
     checkTrackingMode();
-  }, [user]);
+  }, [user, connections]);
 
   const checkTrackingMode = async () => {
     if (!user) return;
@@ -41,14 +43,22 @@ export function useVehicleTrip() {
       if (error) throw error;
 
       if (data?.tracking_mode === 'vehicle') {
+        // Check if there are active vehicle connections
+        const activeConnections = connections.filter(conn => conn.is_active);
+        const hasActiveVehicles = activeConnections.length > 0;
+
         setVehicleTrip(prev => ({
           ...prev,
-          isMonitoring: true,
-          vehicleStatus: 'Automatisk spårning aktiverad',
+          isMonitoring: hasActiveVehicles,
+          vehicleStatus: hasActiveVehicles 
+            ? 'Automatisk spårning aktiverad' 
+            : 'Inga aktiva fordon anslutna',
         }));
 
-        // Subscribe to real-time trip updates
-        subscribeToTripUpdates();
+        // Only subscribe to updates if we have active vehicles
+        if (hasActiveVehicles) {
+          subscribeToTripUpdates();
+        }
       }
     } catch (error) {
       console.error('Error checking tracking mode:', error);
