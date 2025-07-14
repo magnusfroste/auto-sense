@@ -22,6 +22,7 @@ interface Trip {
   trip_status: 'active' | 'completed' | 'paused';
   route_data?: any; // JSON data from database
   notes?: string;
+  vehicle_connection_id?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -176,12 +177,18 @@ export const useTrips = () => {
     fetchTrips();
   }, [user]);
 
+  // Add refreshTrips function for external use
+  const refreshTrips = () => {
+    fetchTrips();
+  };
+
   return {
     trips,
     loading,
     saveTrip,
     updateTrip,
     deleteTrip,
-    fetchTrips
+    fetchTrips,
+    refreshTrips
   };
 };
