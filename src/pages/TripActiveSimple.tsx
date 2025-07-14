@@ -91,9 +91,26 @@ export default function TripActiveSimple(): JSX.Element {
     }
   };
 
-  const refreshData = () => {
-    fetchVehicleState();
-    triggerPolling(); // Trigga polling när användaren trycker refresh
+  const refreshData = async () => {
+    console.log('🔄 Manual refresh initiated...');
+    setLoading(true);
+    
+    try {
+      // Trigga polling först
+      await triggerPolling();
+      
+      // Vänta lite för att låta polling uppdatera databasen
+      setTimeout(async () => {
+        await fetchVehicleState();
+        setLoading(false);
+        setLastUpdate(new Date());
+        console.log('✅ Manual refresh completed');
+      }, 2000);
+      
+    } catch (error) {
+      console.error('❌ Manual refresh error:', error);
+      setLoading(false);
+    }
   };
 
   if (loading) {
