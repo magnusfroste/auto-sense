@@ -195,10 +195,17 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
     return
   }
 
-  // Check if vehicle has moved based on odometer
+  // Check if vehicle has moved based on odometer (lower threshold for testing)
   const hasMovedSignificantly = lastState && lastState.last_odometer ? 
-    (currentOdometer - lastState.last_odometer) > 500 : // 500 meters threshold
-    false
+    (currentOdometer - lastState.last_odometer) > 100 : // 100 meters threshold (was 500)
+    true; // If no previous state, assume movement
+
+  console.log(`Movement analysis for vehicle ${connection.smartcar_vehicle_id}:`, {
+    currentOdometer,
+    lastOdometer: lastState?.last_odometer,
+    hasMovedSignificantly,
+    movement: lastState?.last_odometer ? (currentOdometer - lastState.last_odometer) : 'no previous data'
+  });
 
   // Check if there's an active trip for this vehicle
   const activeTripsResponse = await fetch(`${supabaseUrl}/rest/v1/sense_trips?vehicle_connection_id=eq.${connection.id}&trip_status=eq.active&select=*`, {
@@ -212,28 +219,37 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
   const activeTrips = activeTripsResponse.ok ? await activeTripsResponse.json() : []
   const hasActiveTrip = activeTrips.length > 0
 
-  // Trip logic
+  console.log(`Trip analysis for vehicle ${connection.smartcar_vehicle_id}:`, {
+    hasMovedSignificantly,
+    hasActiveTrip,
+    activeTripsCount: activeTrips.length
+  });
+
+  // Trip logic - more aggressive for testing
   if (hasMovedSignificantly && !hasActiveTrip) {
     // Start new trip
-    console.log(`Starting new trip for vehicle ${connection.smartcar_vehicle_id}`)
+    console.log(`🚗 Starting new trip for vehicle ${connection.smartcar_vehicle_id}`)
     await startNewTrip(connection, currentLocation, currentOdometer)
   } else if (hasActiveTrip) {
     const activeTrip = activeTrips[0]
     
     if (hasMovedSignificantly) {
       // Update ongoing trip
-      console.log(`Updating ongoing trip ${activeTrip.id}`)
+      console.log(`📍 Updating ongoing trip ${activeTrip.id}`)
       await updateOngoingTrip(activeTrip, currentLocation, currentOdometer)
     } else {
       // Check if vehicle has been stationary for a while (end trip)
       const timeSinceLastPoll = lastState?.last_poll_time ? 
         new Date().getTime() - new Date(lastState.last_poll_time).getTime() : 0
       
-      if (timeSinceLastPoll > 5 * 60 * 1000) { // 5 minutes stationary
-        console.log(`Ending trip ${activeTrip.id} - vehicle stationary`)
+      // Shorter stationary time for testing (2 minutes instead of 5)
+      if (timeSinceLastPoll > 2 * 60 * 1000) { 
+        console.log(`🏁 Ending trip ${activeTrip.id} - vehicle stationary for 2+ minutes`)
         await endTrip(activeTrip, currentLocation, currentOdometer)
       }
     }
+  } else {
+    console.log(`⏸️  No movement detected or conditions not met for trip creation`)
   }
 
   // Update vehicle state

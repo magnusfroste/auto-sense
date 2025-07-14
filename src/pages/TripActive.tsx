@@ -5,6 +5,7 @@ import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 import { VehiclePollingStatus } from '@/components/vehicle/VehiclePollingStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { TripDebugPanel } from '@/components/vehicle/TripDebugPanel';
 import { MapPin, Clock, Car, Navigation, Route, Gauge } from 'lucide-react';
 
 const TripActive = () => {
@@ -58,6 +59,9 @@ const TripActive = () => {
             Automatisk fordonsspårning
           </p>
         </div>
+
+        {/* Debug Panel for development */}
+        <TripDebugPanel />
 
         {/* Vehicle Status */}
         <VehiclePollingStatus />
