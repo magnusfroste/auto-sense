@@ -24,8 +24,15 @@ export default function TripActiveSimple(): JSX.Element {
 
   useEffect(() => {
     fetchVehicleState();
-    const interval = setInterval(fetchVehicleState, 5000); // Uppdatera var 5:e sekund
-    return () => clearInterval(interval);
+    triggerPolling(); // Trigga första polling direkt
+    
+    const dataInterval = setInterval(fetchVehicleState, 5000); // Uppdatera UI var 5:e sekund
+    const pollingInterval = setInterval(triggerPolling, 30000); // Trigga polling var 30:e sekund
+    
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(pollingInterval);
+    };
   }, [connections]);
 
   const fetchVehicleState = async () => {
@@ -65,8 +72,23 @@ export default function TripActiveSimple(): JSX.Element {
     }
   };
 
+  const triggerPolling = async () => {
+    if (connections.length === 0) return;
+
+    try {
+      console.log('🔄 Auto-triggering vehicle polling...');
+      await supabase.functions.invoke('vehicle-trip-polling', {
+        body: { connectionId: connections[0].id }
+      });
+      console.log('✅ Auto-polling completed');
+    } catch (error) {
+      console.error('❌ Auto-polling error:', error);
+    }
+  };
+
   const refreshData = () => {
     fetchVehicleState();
+    triggerPolling(); // Trigga polling när användaren trycker refresh
   };
 
   if (loading) {
