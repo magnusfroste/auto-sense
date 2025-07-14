@@ -28,6 +28,16 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const smartcarClientId = Deno.env.get('SMARTCAR_CLIENT_ID')!
     const smartcarClientSecret = Deno.env.get('SMARTCAR_CLIENT_SECRET')!
+    const siteUrl = Deno.env.get('SITE_URL') // Should be https://sense.froste.eu
+    
+    console.log('🔧 Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      hasSmartcarClient: !!smartcarClientId,
+      hasSmartcarSecret: !!smartcarClientSecret,
+      siteUrl,
+      supabaseUrl: supabaseUrl?.substring(0, 30) + '...'
+    })
 
     if (!smartcarClientId || !smartcarClientSecret) {
       console.error('Missing Smartcar credentials');
@@ -82,7 +92,10 @@ Deno.serve(async (req) => {
       console.log('Exchanging code for token for user:', user_id, 'test mode:', test)
 
       // Exchange code for access token
-      console.log('Exchanging code for tokens...');
+      console.log('🔄 Exchanging code for tokens...');
+      const redirectUri = `${supabaseUrl}/functions/v1/smartcar-auth-callback`
+      console.log('📍 Using redirect_uri:', redirectUri)
+      
       const tokenResponse = await fetch('https://auth.smartcar.com/oauth/token', {
         method: 'POST',
         headers: {
@@ -92,7 +105,7 @@ Deno.serve(async (req) => {
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code: code,
-          redirect_uri: `${supabaseUrl}/functions/v1/smartcar-auth-callback`
+          redirect_uri: redirectUri
         })
       })
 
@@ -103,9 +116,15 @@ Deno.serve(async (req) => {
       }
 
       const tokenData = await tokenResponse.json()
-      console.log('Token exchange successful, access_token length:', tokenData.access_token?.length)
+      console.log('✅ Token exchange successful:', {
+        hasAccessToken: !!tokenData.access_token,
+        hasRefreshToken: !!tokenData.refresh_token,
+        accessTokenLength: tokenData.access_token?.length,
+        expiresIn: tokenData.expires_in
+      })
 
       // Get vehicles list - using v1.0 API as per Smartcar tutorial
+      console.log('🚗 Fetching vehicles list...')
       const vehiclesResponse = await fetch('https://api.smartcar.com/v1.0/vehicles', {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`
@@ -119,12 +138,15 @@ Deno.serve(async (req) => {
       }
 
       const vehiclesData = await vehiclesResponse.json()
-      console.log('Found vehicles:', vehiclesData.vehicles?.length || 0)
+      console.log('✅ Found vehicles:', {
+        count: vehiclesData.vehicles?.length || 0,
+        vehicles: vehiclesData.vehicles
+      })
 
       // Store each vehicle connection
       const connections = []
       for (const vehicleId of vehiclesData.vehicles || []) {
-        console.log('Processing vehicle:', vehicleId)
+        console.log('🔧 Processing vehicle:', vehicleId)
         
         // Get vehicle info - using v1.0 API as per Smartcar tutorial
         const infoResponse = await fetch(`https://api.smartcar.com/v1.0/vehicles/${vehicleId}`, {
@@ -136,14 +158,25 @@ Deno.serve(async (req) => {
         let vehicleInfo = {}
         if (infoResponse.ok) {
           vehicleInfo = await infoResponse.json()
-          console.log('Vehicle info retrieved:', vehicleInfo)
+          console.log('✅ Vehicle info retrieved:', {
+            vehicleId,
+            make: vehicleInfo.make,
+            model: vehicleInfo.model,
+            year: vehicleInfo.year,
+            vin: vehicleInfo.vin?.substring(0, 8) + '...'
+          })
         } else {
           const infoError = await infoResponse.text()
-          console.error('Get vehicle info failed:', infoResponse.status, infoError)
+          console.error('❌ Get vehicle info failed:', {
+            vehicleId,
+            status: infoResponse.status,
+            error: infoError
+          })
           // Continue with empty info rather than failing completely
         }
 
         // Store vehicle connection
+        console.log('💾 Storing vehicle connection for:', vehicleId)
         const { data: connection, error } = await supabase
           .from('vehicle_connections')
           .insert({
@@ -162,19 +195,31 @@ Deno.serve(async (req) => {
           .single()
 
         if (error) {
-          console.error('Failed to store vehicle connection:', error)
-          throw error
+          console.error('❌ Failed to store vehicle connection:', {
+            vehicleId,
+            error: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          throw new Error(`Database error storing vehicle ${vehicleId}: ${error.message}`)
         }
 
+        console.log('✅ Vehicle connection stored:', {
+          connectionId: connection.id,
+          vehicleId,
+          userId: user_id
+        })
         connections.push(connection)
       }
 
-      console.log(`Successfully stored ${connections.length} vehicle connections`);
+      console.log(`🎉 Successfully stored ${connections.length} vehicle connections for user:`, user_id);
 
       return new Response(JSON.stringify({ 
         success: true, 
         connections_stored: connections.length,
-        test_mode: test 
+        test_mode: test,
+        timestamp: new Date().toISOString()
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
@@ -187,12 +232,40 @@ Deno.serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Smartcar auth error:', error)
+    console.error('🚨 Smartcar auth error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      cause: error.cause
+    })
+
+    // Determine appropriate HTTP status code
+    let statusCode = 500 // Default to server error
+    let errorMessage = error.message
+
+    // Client errors (4xx)
+    if (error.message.includes('Missing') || 
+        error.message.includes('Invalid') ||
+        error.message.includes('code or user_id')) {
+      statusCode = 400
+    }
+    // Authentication/authorization errors
+    else if (error.message.includes('Failed to exchange code') ||
+             error.message.includes('credentials not configured')) {
+      statusCode = 401
+    }
+    // Smartcar API errors
+    else if (error.message.includes('Failed to get vehicles')) {
+      statusCode = 502 // Bad Gateway - external service error
+    }
+
     return new Response(JSON.stringify({ 
-      error: error.message 
+      error: errorMessage,
+      status: statusCode,
+      timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400
+      status: statusCode
     })
   }
 })
