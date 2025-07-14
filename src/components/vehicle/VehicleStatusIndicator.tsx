@@ -37,21 +37,19 @@ export const VehicleStatusIndicator = () => {
     );
   }
 
-  const activeConnections = connections.filter(c => c.is_active);
-
   const getStatusIcon = () => {
-    if (activeConnections.length === 0) return <XCircle className="h-4 w-4 text-muted-foreground" />;
+    if (connections.length === 0) return <XCircle className="h-4 w-4 text-muted-foreground" />;
     return <CheckCircle className="h-4 w-4 text-green-500" />;
   };
 
   const getStatusText = () => {
-    if (activeConnections.length === 0) return 'Inga anslutna fordon';
-    if (activeConnections.length === 1) return '1 fordon anslutet';
-    return `${activeConnections.length} fordon anslutna`;
+    if (connections.length === 0) return 'Inga anslutna fordon';
+    if (connections.length === 1) return '1 fordon anslutet';
+    return `${connections.length} fordon anslutna`;
   };
 
   const getStatusDescription = () => {
-    if (activeConnections.length === 0) {
+    if (connections.length === 0) {
       return 'Anslut dina fordon för automatisk resspårning och fordonsdata';
     }
     return 'Dina fordon är redo för automatisk resspårning';
@@ -72,10 +70,10 @@ export const VehicleStatusIndicator = () => {
             </CardDescription>
           </div>
           <Badge 
-            variant={activeConnections.length > 0 ? 'default' : 'secondary'}
+            variant={connections.length > 0 ? 'default' : 'secondary'}
             className="flex items-center space-x-1"
           >
-            <span>{activeConnections.length > 0 ? 'Aktivt' : 'Inaktivt'}</span>
+            <span>{connections.length > 0 ? 'Aktivt' : 'Inaktivt'}</span>
           </Badge>
         </div>
       </CardHeader>
@@ -84,12 +82,12 @@ export const VehicleStatusIndicator = () => {
           {getStatusDescription()}
         </p>
 
-        {activeConnections.length > 0 && (
+        {connections.length > 0 && (
           <>
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Anslutna fordon:</h4>
               <div className="space-y-2">
-                {activeConnections.map((connection) => (
+                {connections.map((connection) => (
                   <div key={connection.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
                     <div className="flex items-center space-x-2">
                       <Car className="h-4 w-4 text-muted-foreground" />
@@ -136,7 +134,7 @@ export const VehicleStatusIndicator = () => {
           </>
         )}
 
-        {activeConnections.length === 0 && (
+        {connections.length === 0 && (
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-3">
               Anslut dina fordon för att få tillgång till:

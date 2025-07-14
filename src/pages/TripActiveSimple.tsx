@@ -267,7 +267,7 @@ export default function TripActiveSimple(): JSX.Element {
               </>
             ) : (
               <>
-                {connections.filter(conn => conn.is_active).length === 0 ? (
+                {connections.length === 0 ? (
                   // No active vehicles - show fallback options
                   <div className="space-y-4">
                     <div className="text-center p-8 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">

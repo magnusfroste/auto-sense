@@ -15,7 +15,6 @@ interface VehicleConnection {
   vin?: string;
   connected_at: string;
   last_sync_at?: string;
-  is_active: boolean;
   access_token: string;
   smartcar_vehicle_id: string;
 }
@@ -110,8 +109,8 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
             </CardDescription>
           </div>
         </div>
-        <Badge variant={connection.is_active ? 'default' : 'secondary'}>
-          {connection.is_active ? 'Aktiv' : 'Inaktiv'}
+        <Badge variant="default">
+          Aktiv
         </Badge>
       </CardHeader>
       

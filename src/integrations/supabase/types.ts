@@ -1303,7 +1303,6 @@ export type Database = {
           connected_at: string
           created_at: string
           id: string
-          is_active: boolean
           last_sync_at: string | null
           make: string | null
           model: string | null
@@ -1320,7 +1319,6 @@ export type Database = {
           connected_at?: string
           created_at?: string
           id?: string
-          is_active?: boolean
           last_sync_at?: string | null
           make?: string | null
           model?: string | null
@@ -1337,7 +1335,6 @@ export type Database = {
           connected_at?: string
           created_at?: string
           id?: string
-          is_active?: boolean
           last_sync_at?: string | null
           make?: string | null
           model?: string | null

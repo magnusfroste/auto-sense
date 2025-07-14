@@ -177,89 +177,37 @@ Deno.serve(async (req) => {
 
         // Store vehicle connection
         console.log('💾 Storing vehicle connection for:', vehicleId)
-        
-        // First, check if this vehicle already exists for this user
-        const { data: existingConnection } = await supabase
+        const { data: connection, error } = await supabase
           .from('vehicle_connections')
-          .select('id, is_active')
-          .eq('user_id', user_id)
-          .eq('smartcar_vehicle_id', vehicleId)
-          .single();
+          .insert({
+            user_id: user_id,
+            vehicle_id: vehicleId,
+            smartcar_vehicle_id: vehicleId,
+            make: vehicleInfo.make,
+            model: vehicleInfo.model,
+            year: vehicleInfo.year,
+            vin: vehicleInfo.vin,
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token
+          })
+          .select()
+          .single()
 
-        let connection;
-        if (existingConnection) {
-          console.log('🔄 Vehicle already exists, updating connection:', {
-            connectionId: existingConnection.id,
-            currentlyActive: existingConnection.is_active
-          });
-          
-          // Update existing connection with new tokens and reactivate
-          const { data: updatedConnection, error } = await supabase
-            .from('vehicle_connections')
-            .update({
-              access_token: tokenData.access_token,
-              refresh_token: tokenData.refresh_token,
-              is_active: true,
-              connected_at: new Date().toISOString(),
-              make: vehicleInfo.make,
-              model: vehicleInfo.model,
-              year: vehicleInfo.year,
-              vin: vehicleInfo.vin
-            })
-            .eq('id', existingConnection.id)
-            .select()
-            .single();
-
-          if (error) {
-            console.error('❌ Failed to update existing vehicle connection:', {
-              vehicleId,
-              error: error.message,
-              code: error.code,
-              details: error.details,
-              hint: error.hint
-            })
-            throw new Error(`Database error updating vehicle ${vehicleId}: ${error.message}`)
-          }
-          
-          connection = updatedConnection;
-        } else {
-          // Create new connection
-          const { data: newConnection, error } = await supabase
-            .from('vehicle_connections')
-            .insert({
-              user_id: user_id,
-              vehicle_id: vehicleId,
-              smartcar_vehicle_id: vehicleId,
-              make: vehicleInfo.make,
-              model: vehicleInfo.model,
-              year: vehicleInfo.year,
-              vin: vehicleInfo.vin,
-              access_token: tokenData.access_token,
-              refresh_token: tokenData.refresh_token,
-              is_active: true
-            })
-            .select()
-            .single()
-
-          if (error) {
-            console.error('❌ Failed to store new vehicle connection:', {
-              vehicleId,
-              error: error.message,
-              code: error.code,
-              details: error.details,
-              hint: error.hint
-            })
-            throw new Error(`Database error storing vehicle ${vehicleId}: ${error.message}`)
-          }
-          
-          connection = newConnection;
+        if (error) {
+          console.error('❌ Failed to store vehicle connection:', {
+            vehicleId,
+            error: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          throw new Error(`Database error storing vehicle ${vehicleId}: ${error.message}`)
         }
 
-        console.log('✅ Vehicle connection processed:', {
+        console.log('✅ Vehicle connection stored:', {
           connectionId: connection.id,
           vehicleId,
-          userId: user_id,
-          wasExisting: !!existingConnection
+          userId: user_id
         })
         connections.push(connection)
       }

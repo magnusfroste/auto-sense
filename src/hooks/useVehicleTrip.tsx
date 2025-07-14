@@ -43,9 +43,8 @@ export function useVehicleTrip() {
       if (error) throw error;
 
       if (data?.tracking_mode === 'vehicle') {
-        // Check if there are active vehicle connections
-        const activeConnections = connections.filter(conn => conn.is_active);
-        const hasActiveVehicles = activeConnections.length > 0;
+        // Check if there are vehicle connections (all are active since inactive ones are deleted)
+        const hasActiveVehicles = connections.length > 0;
 
         setVehicleTrip(prev => ({
           ...prev,
