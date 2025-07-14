@@ -34,14 +34,14 @@ Deno.serve(async (req) => {
 
     if (error) {
       console.error('OAuth error:', error)
-      const errorUrl = new URL(`${origin}/smartcar-test`)
+      const errorUrl = new URL(`${origin}/settings`)
       errorUrl.searchParams.set('oauth_error', error)
       return Response.redirect(errorUrl.toString())
     }
 
     if (!code || !state) {
       console.error('Missing required parameters:', { hasCode: !!code, hasState: !!state })
-      const errorUrl = new URL(`${origin}/smartcar-test`)
+      const errorUrl = new URL(`${origin}/settings`)
       errorUrl.searchParams.set('oauth_error', 'Missing required parameters')
       return Response.redirect(errorUrl.toString())
     }
@@ -51,8 +51,8 @@ Deno.serve(async (req) => {
     // logic happens in the frontend, so we'll redirect back with success params
     // and let the frontend handle the automatic activation
     
-    console.log('Redirecting to test page with OAuth success')
-    const successUrl = new URL(`${origin}/smartcar-test`)
+    console.log('Redirecting to settings page with OAuth success')
+    const successUrl = new URL(`${origin}/settings`)
     successUrl.searchParams.set('oauth_success', 'true')
     successUrl.searchParams.set('code', code)
     successUrl.searchParams.set('state', state)
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
                   req.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
                   Deno.env.get('SITE_URL') ||
                   'https://37ba7bea-4e4a-40da-b001-982449075670.lovableproject.com'
-    const errorUrl = new URL(`${origin}/smartcar-test`)
+    const errorUrl = new URL(`${origin}/settings`)
     errorUrl.searchParams.set('oauth_error', error.message)
     return Response.redirect(errorUrl.toString())
   }
