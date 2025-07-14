@@ -72,7 +72,18 @@ const Settings = () => {
     const state = searchParams.get('state');
     const autoStart = searchParams.get('auto_start');
 
+    console.log('🎯 Settings page OAuth detection:', { 
+      oauthSuccess, 
+      oauthError, 
+      code: code?.substring(0, 10) + '...', 
+      state, 
+      autoStart,
+      hasCode: !!code,
+      hasState: !!state
+    });
+
     if (oauthError) {
+      console.error('❌ OAuth error detected:', oauthError);
       toast({
         title: "OAuth Fel",
         description: `OAuth error: ${oauthError}`,
@@ -81,8 +92,10 @@ const Settings = () => {
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (oauthSuccess && code && state) {
-      console.log('🎯 Settings page detected OAuth success, calling handleOAuthRedirect');
+      console.log('✅ Settings page detected OAuth success, calling handleOAuthRedirect');
       handleOAuthRedirect(code, state, autoStart === 'true');
+    } else if (oauthSuccess) {
+      console.error('❌ OAuth success but missing code or state:', { code: !!code, state: !!state });
     }
   }, [searchParams, toast, handleOAuthRedirect]);
 

@@ -149,11 +149,12 @@ export const useVehicleConnections = () => {
       storedState, 
       userId,
       testMode,
-      stateMatch: state === storedState
+      stateMatch: state === storedState,
+      hasStoredData: !!(storedState && userId)
     });
 
     if (!code || !state) {
-      console.error('Missing code or state in OAuth callback');
+      console.error('❌ Missing code or state in OAuth callback');
       toast({
         title: "Fel",
         description: "Ofullständig OAuth-callback",
@@ -163,7 +164,7 @@ export const useVehicleConnections = () => {
     }
 
     if (state !== storedState) {
-      console.error('State mismatch:', { received: state, stored: storedState });
+      console.error('❌ State mismatch:', { received: state, stored: storedState });
       toast({
         title: "Säkerhetsfel",
         description: "OAuth state mismatch",
@@ -173,29 +174,38 @@ export const useVehicleConnections = () => {
     }
 
     if (!userId) {
-      console.error('Missing user ID in OAuth callback');
-      toast({
-        title: "Fel",
-        description: "Användar-ID saknas",
-        variant: "destructive"
-      });
-      return;
+      console.error('❌ Missing user ID in OAuth callback - localStorage might have been cleared');
+      
+      // Fallback to current user if available
+      if (user?.id) {
+        console.log('⚠️ Using current user ID as fallback:', user.id);
+        // We'll continue with current user, but can't determine test mode
+      } else {
+        toast({
+          title: "Fel",
+          description: "Användar-ID saknas",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
+    const finalUserId = userId || user?.id;
+    console.log('📤 Making POST request to complete OAuth...', { finalUserId, testMode });
+
     try {
-      console.log('Making POST request to complete OAuth...');
       const { data, error } = await supabase.functions.invoke('smartcar-auth', {
         body: { 
           code, 
-          user_id: userId,
+          user_id: finalUserId,
           test: testMode
         }
       });
 
-      console.log('POST response:', { data, error });
+      console.log('📥 POST response:', { data, error, hasData: !!data, hasError: !!error });
 
       if (error) {
-        console.error('Edge function error:', error);
+        console.error('❌ Edge function error:', error);
         throw new Error(error.message || 'Unknown server error');
       }
 
@@ -204,22 +214,22 @@ export const useVehicleConnections = () => {
       localStorage.removeItem('smartcar_user_id');
       localStorage.removeItem('smartcar_test_mode');
       
-      console.log('OAuth completed successfully, fetching updated connections...');
+      console.log('✅ OAuth completed successfully, fetching updated connections...');
       await fetchConnections();
       
       // Automatically enable vehicle tracking and start polling
-      console.log('Automatically enabling vehicle tracking and starting polling...');
+      console.log('🚗 Automatically enabling vehicle tracking and starting polling...');
       try {
         // Update user's tracking mode to 'vehicle'
         const { error: profileError } = await supabase
           .from('sense_profiles')
           .update({ tracking_mode: 'vehicle' })
-          .eq('id', userId);
+          .eq('id', finalUserId);
 
         if (profileError) {
-          console.error('Error updating tracking mode:', profileError);
+          console.error('❌ Error updating tracking mode:', profileError);
         } else {
-          console.log('Successfully updated tracking mode to vehicle');
+          console.log('✅ Successfully updated tracking mode to vehicle');
         }
 
         // Start vehicle polling for all connected vehicles
@@ -228,15 +238,16 @@ export const useVehicleConnections = () => {
         });
 
         if (pollingError) {
-          console.error('Error starting vehicle polling:', pollingError);
+          console.error('❌ Error starting vehicle polling:', pollingError);
         } else {
-          console.log('Successfully started vehicle polling');
+          console.log('✅ Successfully started vehicle polling');
         }
       } catch (autoError) {
-        console.error('Error in automatic setup:', autoError);
+        console.error('❌ Error in automatic setup:', autoError);
       }
       
       const vehicleCount = data?.connections_stored || 1;
+      console.log('🎉 Showing success toast for', vehicleCount, 'vehicles');
       toast({
         title: "Fordon anslutet!",
         description: `${vehicleCount} fordon har anslutits och automatisk spårning är nu aktiverad`
