@@ -130,43 +130,64 @@ async function pollSingleVehicle(connectionId: string, connectionData?: any) {
 async function fetchSmartcarData(vehicleId: string, accessToken: string) {
   console.log(`🚗 Fetching Smartcar data for vehicle ${vehicleId}`)
   
-  const [locationRes, odometerRes] = await Promise.all([
-    fetch(`https://api.smartcar.com/v2.0/vehicles/${vehicleId}/location`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    }).catch(e => {
-      console.error('❌ Location fetch error:', e)
-      return { ok: false, error: e.message }
-    }),
-    
-    fetch(`https://api.smartcar.com/v2.0/vehicles/${vehicleId}/odometer`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    }).catch(e => {
-      console.error('❌ Odometer fetch error:', e)
-      return { ok: false, error: e.message }
-    })
-  ])
+  try {
+    const [locationRes, odometerRes] = await Promise.all([
+      fetch(`https://api.smartcar.com/v2.0/vehicles/${vehicleId}/location`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      }),
+      
+      fetch(`https://api.smartcar.com/v2.0/vehicles/${vehicleId}/odometer`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      })
+    ])
 
-  const data: any = {
-    timestamp: new Date().toISOString(),
-    vehicleId
-  }
+    console.log(`📍 Location response status: ${locationRes.status}`)
+    console.log(`🛣️ Odometer response status: ${odometerRes.status}`)
 
-  if (locationRes.ok) {
-    const location = await locationRes.json()
-    data.location = {
-      latitude: location.latitude,
-      longitude: location.longitude
+    const data: any = {
+      location: null,
+      odometer: null,
+      errors: [],
+      timestamp: new Date().toISOString(),
+      vehicleId
+    }
+
+    if (locationRes.ok) {
+      const locationData = await locationRes.json()
+      console.log(`✅ Location data:`, locationData)
+      data.location = locationData.data || {
+        latitude: locationData.latitude,
+        longitude: locationData.longitude
+      }
+    } else {
+      const locationError = await locationRes.text()
+      console.error(`❌ Location error (${locationRes.status}):`, locationError)
+      data.errors.push(`Location: ${locationError}`)
+    }
+
+    if (odometerRes.ok) {
+      const odometerData = await odometerRes.json()
+      console.log(`✅ Odometer data:`, odometerData)
+      data.odometer = odometerData.data || {
+        distance: odometerData.distance
+      }
+    } else {
+      const odometerError = await odometerRes.text()
+      console.error(`❌ Odometer error (${odometerRes.status}):`, odometerError)
+      data.errors.push(`Odometer: ${odometerError}`)
+    }
+
+    console.log(`📊 Final data:`, data)
+    return data
+
+  } catch (error) {
+    console.error('❌ Fetch error:', error)
+    return {
+      location: null,
+      odometer: null,
+      errors: [`Network error: ${error.message}`]
     }
   }
-
-  if (odometerRes.ok) {
-    const odometer = await odometerRes.json()
-    data.odometer = {
-      distance: odometer.distance
-    }
-  }
-
-  return data
 }
 
 async function getVehicleState(connectionId: string): Promise<VehicleState | null> {
