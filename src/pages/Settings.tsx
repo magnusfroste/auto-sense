@@ -313,18 +313,6 @@ const Settings = () => {
                   </Select>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="text-sm font-medium">Automatisk spårning</div>
-                  <div className="text-sm text-muted-foreground">
-                    Starta resor automatiskt
-                  </div>
-                </div>
-                <Switch
-                  checked={profile.auto_tracking || false}
-                  onCheckedChange={(checked) => updateProfile({ auto_tracking: checked })}
-                />
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
