@@ -149,6 +149,17 @@ export const useVehiclePolling = () => {
     };
   }, [user, fetchVehicleStates]);
 
+  // Auto-refresh vehicle states every 10 seconds
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(() => {
+      fetchVehicleStates();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [user, fetchVehicleStates]);
+
   // Initial fetch
   useEffect(() => {
     fetchVehicleStates();

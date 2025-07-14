@@ -242,7 +242,7 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
     last_location: currentLocation,
     last_poll_time: currentTime,
     current_trip_id: hasActiveTrip ? activeTrips[0].id : null,
-    polling_frequency: hasActiveTrip ? 30 : 120 // 30s when active, 2min when idle
+    polling_frequency: hasActiveTrip ? 15 : 30 // 15s when active, 30s when idle
   })
 }
 

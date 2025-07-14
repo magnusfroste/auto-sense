@@ -8,7 +8,7 @@ import { useTrips } from '@/hooks/useTrips';
 import { Activity, Car, Clock, MapPin, PlayCircle, StopCircle, RefreshCw } from 'lucide-react';
 
 export const VehiclePollingStatus = () => {
-  const { vehicleStates, hasActiveTrips, startAllVehiclePolling } = useVehiclePolling();
+  const { vehicleStates, hasActiveTrips } = useVehiclePolling();
   const { connections } = useVehicleConnections();
   const { trips } = useTrips();
   
@@ -17,7 +17,7 @@ export const VehiclePollingStatus = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setLastUpdate(new Date());
-    }, 30000); // Update every 30 seconds
+    }, 10000); // Update every 10 seconds for more responsive UI
 
     return () => clearInterval(interval);
   }, []);
@@ -161,29 +161,6 @@ export const VehiclePollingStatus = () => {
           </div>
         )}
 
-
-        {connections.length > 0 && vehicleStates.length === 0 && (
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                  Automatisk spårning inte aktiv
-                </p>
-                <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                  Klicka för att starta automatisk resspårning
-                </p>
-              </div>
-              <Button 
-                size="sm" 
-                onClick={startAllVehiclePolling}
-                className="bg-yellow-600 hover:bg-yellow-700"
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Starta
-              </Button>
-            </div>
-          </div>
-        )}
 
         <div className="text-xs text-muted-foreground">
           Senast uppdaterad: {lastUpdate.toLocaleTimeString('sv-SE')}
