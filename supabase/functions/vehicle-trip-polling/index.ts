@@ -128,14 +128,22 @@ async function pollSingleVehicle(connectionId: string, connectionData?: any) {
 }
 
 async function fetchSmartcarData(vehicleId: string, accessToken: string) {
+  console.log(`🚗 Fetching Smartcar data for vehicle ${vehicleId}`)
+  
   const [locationRes, odometerRes] = await Promise.all([
     fetch(`https://api.smartcar.com/v2.0/vehicles/${vehicleId}/location`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
-    }).catch(e => ({ ok: false, error: e.message })),
+    }).catch(e => {
+      console.error('❌ Location fetch error:', e)
+      return { ok: false, error: e.message }
+    }),
     
     fetch(`https://api.smartcar.com/v2.0/vehicles/${vehicleId}/odometer`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
-    }).catch(e => ({ ok: false, error: e.message }))
+    }).catch(e => {
+      console.error('❌ Odometer fetch error:', e)
+      return { ok: false, error: e.message }
+    })
   ])
 
   const data: any = {
