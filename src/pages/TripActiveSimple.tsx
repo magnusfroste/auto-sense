@@ -78,16 +78,23 @@ export default function TripActiveSimple(): JSX.Element {
     try {
       console.log('🔄 Auto-triggering vehicle polling...', new Date().toLocaleTimeString());
       const { data, error } = await supabase.functions.invoke('vehicle-trip-polling', {
-        body: { connectionId: connections[0].id }
+        body: { 
+          connectionId: connections[0].id,
+          action: 'poll_single',
+          debug: true,
+          timestamp: new Date().toISOString()
+        }
       });
       
+      console.log('📡 Full polling response:', { data, error, status: 'complete' });
+      
       if (error) {
-        console.error('❌ Polling error:', error);
+        console.error('❌ Polling error details:', error);
       } else {
-        console.log('✅ Auto-polling completed:', data);
+        console.log('✅ Auto-polling completed successfully:', data);
       }
     } catch (error) {
-      console.error('❌ Auto-polling error:', error);
+      console.error('❌ Auto-polling exception:', error);
     }
   };
 
