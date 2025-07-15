@@ -315,10 +315,35 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
   if (hasActiveTrip) {
     const activeTrip = activeTrips[0]
     
-    // Update existing trip with new data
-    await updateOngoingTrip(activeTrip, currentLocation, currentOdometer)
+    // Check if vehicle has been stationary too long
+    const lastPollTime = lastState?.last_poll_time ? new Date(lastState.last_poll_time) : new Date()
+    const currentTime = new Date()
+    const minutesSinceLastMovement = (currentTime.getTime() - lastPollTime.getTime()) / (1000 * 60)
     
-    console.log(`🔄 Updated ongoing trip ${activeTrip.id} with new odometer: ${currentOdometer}km`)
+    if (!hasMovedSignificantly && minutesSinceLastMovement >= tripConfig.stationaryTimeout) {
+      console.log(`🏁 Vehicle stationary for ${minutesSinceLastMovement.toFixed(1)}min (≥${tripConfig.stationaryTimeout}min), ending trip`)
+      
+      try {
+        await endTrip(activeTrip, currentLocation, currentOdometer, tripConfig)
+        console.log(`✅ Trip ${activeTrip.id} ended due to stationary timeout`)
+        
+        // Clear the current trip ID since we ended it
+        await updateVehicleState(connection.id, {
+          last_odometer: currentOdometer,
+          last_location: currentLocation,
+          last_poll_time: currentTime.toISOString(),
+          current_trip_id: null,
+          polling_frequency: 120 // Back to normal polling
+        })
+        return
+      } catch (error) {
+        console.error(`❌ Failed to end trip:`, error)
+      }
+    } else {
+      // Update existing trip with new data
+      await updateOngoingTrip(activeTrip, currentLocation, currentOdometer)
+      console.log(`🔄 Updated ongoing trip ${activeTrip.id} with new odometer: ${currentOdometer}km`)
+    }
   } else if (hasMovedSignificantly) {
     console.log(`🚗 Starting new trip for vehicle ${connection.smartcar_vehicle_id} (moved ${movementDistance}m, threshold: ${tripConfig.movementThreshold}m)`)
     
@@ -380,10 +405,10 @@ async function getUserTripConfig(userId: string) {
   const profiles = profileResponse.ok ? await profileResponse.json() : []
   const profile = profiles.length > 0 ? profiles[0] : {}
 
-  // Return configuration with defaults - TEMPORARY: Lower thresholds for testing
+  // Return configuration with defaults
   return {
-    movementThreshold: profile.trip_movement_threshold_meters || 10, // Lowered from 100m to 10m
-    stationaryTimeout: profile.trip_stationary_timeout_minutes || 0.5, // Lowered from 2min to 30s
+    movementThreshold: profile.trip_movement_threshold_meters || 100, // Back to normal 100m
+    stationaryTimeout: profile.trip_stationary_timeout_minutes || 2, // Back to normal 2min
     minimumDistance: profile.trip_minimum_distance_meters || 500,
     maxDurationHours: profile.trip_max_duration_hours || 12,
     sensitivity: profile.trip_sensitivity_level || 'normal'
@@ -504,6 +529,57 @@ async function updateOngoingTrip(trip: any, location: any, odometer: number) {
   }
 
   console.log(`✅ Trip updated - Distance: ${newDistance}km, Duration: ${newDuration}min`)
+}
+
+async function endTrip(trip: any, location: any, odometer: number, tripConfig: any, forced = false) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+  const startOdometer = trip.odometer_km || 0
+  const newDistance = Math.max(0, Math.round((odometer - startOdometer) * 100) / 100)
+  
+  const startTime = new Date(trip.start_time)
+  const currentTime = new Date()
+  const newDuration = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60))
+  const distanceMeters = newDistance * 1000
+
+  console.log(`🏁 Ending trip ${trip.id}: distance=${newDistance}km, duration=${newDuration}min, minDistance=${tripConfig.minimumDistance}m`)
+
+  // Check if trip meets minimum requirements (unless forced)
+  if (!forced && distanceMeters < tripConfig.minimumDistance) {
+    console.log(`🗑️ Trip ${trip.id} too short (${distanceMeters}m < ${tripConfig.minimumDistance}m), deleting instead of completing`)
+    
+    // Delete short trip instead of completing it
+    await fetch(`${supabaseUrl}/rest/v1/sense_trips?id=eq.${trip.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey,
+        'Content-Type': 'application/json'
+      }
+    })
+    return
+  }
+
+  const updates = {
+    end_time: new Date().toISOString(),
+    end_location: location || {},
+    distance_km: newDistance,
+    duration_minutes: newDuration,
+    trip_status: 'completed',
+    updated_at: new Date().toISOString()
+  }
+
+  console.log(`✅ Completing trip ${trip.id} with ${newDistance}km distance`)
+  await fetch(`${supabaseUrl}/rest/v1/sense_trips?id=eq.${trip.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${supabaseServiceKey}`,
+      'apikey': supabaseServiceKey,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(updates)
+  })
 }
 
 async function updateVehicleState(connectionId: string, state: any) {
