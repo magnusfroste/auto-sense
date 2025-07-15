@@ -8,7 +8,8 @@ import {
   MapPin, 
   FileText, 
   Settings,
-  Menu
+  Menu,
+  TestTube
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -25,6 +26,7 @@ interface AppLayoutProps {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Navigation },
   { name: 'Pågående resa', href: '/trip/active', icon: RouteIcon },
+  { name: 'Test Map', href: '/test-map', icon: TestTube },
   { name: 'Mina resor', href: '/trips', icon: MapPin },
   { name: 'Rapporter', href: '/reports', icon: FileText },
   { name: 'Inställningar', href: '/settings', icon: Settings },
