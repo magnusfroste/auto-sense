@@ -35,15 +35,25 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
   // Initialize map when token is available
   useEffect(() => {
+    console.log('🗺️ MapComponent effect triggered:', { 
+      hasToken: !!token, 
+      hasContainer: !!mapContainer.current, 
+      hasMap: !!map.current,
+      currentLocation 
+    });
+
     if (!token || !mapContainer.current || map.current) return;
 
     try {
+      console.log('🗺️ Initializing Mapbox map...');
       mapboxgl.accessToken = token;
       
       // Default to Stockholm if no location provided
       const defaultCenter: [number, number] = currentLocation ? 
         [currentLocation.lng, currentLocation.lat] : 
         [18.0686, 59.3293]; // Stockholm
+
+      console.log('🗺️ Map center:', defaultCenter);
 
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
@@ -52,6 +62,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         zoom: currentLocation ? 15 : 10,
         pitch: 0,
       });
+
+      console.log('✅ Mapbox map initialized successfully');
 
       // Add navigation controls
       if (showNavigation) {

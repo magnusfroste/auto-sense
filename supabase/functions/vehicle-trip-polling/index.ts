@@ -518,7 +518,25 @@ async function updateOngoingTrip(trip: any, location: any, odometer: number) {
   const distanceKm = odometer > startOdometer ? (odometer - startOdometer) / 1000 : 0
   const durationMinutes = Math.floor((new Date().getTime() - new Date(trip.start_time).getTime()) / (1000 * 60))
 
+  // Get existing route data or initialize empty array
+  const existingRouteData = trip.route_data || []
+  
+  // Add current location to route data (GeoJSON LineString format: [longitude, latitude])
+  const newRoutePoint = [location.longitude, location.latitude]
+  
+  // Only add if it's different from the last point (avoid duplicates)
+  const shouldAddPoint = existingRouteData.length === 0 || 
+    (existingRouteData.length > 0 && 
+     (Math.abs(existingRouteData[existingRouteData.length - 1][0] - newRoutePoint[0]) > 0.0001 ||
+      Math.abs(existingRouteData[existingRouteData.length - 1][1] - newRoutePoint[1]) > 0.0001))
+  
+  const updatedRouteData = shouldAddPoint ? [...existingRouteData, newRoutePoint] : existingRouteData
+
+  console.log(`🔄 Updating trip ${trip.id}: distance=${distanceKm.toFixed(1)}km, duration=${durationMinutes}min, route points=${updatedRouteData.length}`)
+
   const updates = {
+    end_location: location,
+    route_data: updatedRouteData,
     distance_km: Math.round(distanceKm * 100) / 100, // Round to 2 decimals
     duration_minutes: durationMinutes,
     updated_at: new Date().toISOString()

@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
+import { useActiveTrip } from '@/hooks/useActiveTrip';
 import { MapComponent } from '@/components/map/MapComponent';
 import { supabase } from '@/integrations/supabase/client';
-import { Car, MapPin, Gauge, Clock, RefreshCw } from 'lucide-react';
+import { Car, MapPin, Gauge, Clock, RefreshCw, Route, Timer } from 'lucide-react';
 
 interface VehicleState {
   id: string;
@@ -18,6 +19,7 @@ interface VehicleState {
 export default function TripActiveSimple(): JSX.Element {
   const { user } = useAuth();
   const { connections } = useVehicleConnections();
+  const { activeTrip, loading: tripLoading } = useActiveTrip(connections[0]?.id);
   const [vehicleState, setVehicleState] = useState<VehicleState | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -173,13 +175,13 @@ export default function TripActiveSimple(): JSX.Element {
         </Button>
       </div>
 
-      {/* Live Map */}
+      {/* Live Map with Trip Data */}
       {vehicleState?.last_location && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <MapPin className="mr-2 h-5 w-5" />
-              Aktuell position
+              {activeTrip ? 'Pågående resa' : 'Aktuell position'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -188,9 +190,61 @@ export default function TripActiveSimple(): JSX.Element {
                 lat: vehicleState.last_location.latitude,
                 lng: vehicleState.last_location.longitude
               }}
+              startLocation={activeTrip?.start_location ? {
+                lat: activeTrip.start_location.latitude,
+                lng: activeTrip.start_location.longitude
+              } : undefined}
+              route={activeTrip?.route_data ? {
+                type: 'LineString',
+                coordinates: activeTrip.route_data
+              } : undefined}
               height="400px"
               showNavigation={true}
             />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Trip Info */}
+      {activeTrip && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Route className="mr-2 h-5 w-5" />
+              Resa pågår
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {activeTrip.distance_km ? activeTrip.distance_km.toFixed(1) : '0.0'} km
+                </div>
+                <p className="text-sm text-muted-foreground">Distans</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {activeTrip.duration_minutes ? Math.floor(activeTrip.duration_minutes / 60) : 0}h {activeTrip.duration_minutes ? activeTrip.duration_minutes % 60 : 0}m
+                </div>
+                <p className="text-sm text-muted-foreground">Tid</p>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">
+                  {new Date(activeTrip.start_time).toLocaleTimeString('sv-SE')}
+                </div>
+                <p className="text-sm text-muted-foreground">Starttid</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Typ: <span className="font-medium capitalize">{activeTrip.trip_type}</span>
+                {activeTrip.route_data && (
+                  <span className="ml-4">
+                    Ruttpunkter: <span className="font-medium">{activeTrip.route_data.length}</span>
+                  </span>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
