@@ -135,13 +135,32 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     return [];
   };
 
+  // Helper function to validate location data
+  const isValidLocation = (location: any): location is LocationData => {
+    return (
+      location &&
+      typeof location.lat === 'number' &&
+      typeof location.lng === 'number' &&
+      !isNaN(location.lat) &&
+      !isNaN(location.lng) &&
+      location.lat >= -90 && 
+      location.lat <= 90 &&
+      location.lng >= -180 && 
+      location.lng <= 180
+    );
+  };
+
   // Update markers when locations change
   useEffect(() => {
     console.log('🗺️ MapComponent markers effect triggered:', { 
       mapLoaded, 
       hasCurrentLocation: !!currentLocation,
       hasStartLocation: !!startLocation,
-      routeLength: route ? getRouteCoordinates(route).length : 0
+      routeLength: route ? getRouteCoordinates(route).length : 0,
+      currentLocationValid: isValidLocation(currentLocation),
+      startLocationValid: isValidLocation(startLocation),
+      currentLocationData: currentLocation,
+      startLocationData: startLocation
     });
     
     if (!map.current || !mapLoaded) return;
@@ -156,24 +175,30 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
     existingMarkers.forEach(marker => marker.remove());
 
-    // Add start location marker
-    if (startLocation) {
+    // Add start location marker - only if valid
+    if (isValidLocation(startLocation)) {
+      console.log('✅ Adding valid start marker:', startLocation);
       const startMarker = new mapboxgl.Marker({ 
         color: '#22c55e' // Green for start
       })
         .setLngLat([startLocation.lng, startLocation.lat])
         .setPopup(new mapboxgl.Popup().setHTML('<div><strong>Start</strong></div>'))
         .addTo(map.current);
+    } else if (startLocation) {
+      console.warn('⚠️ Invalid start location data:', startLocation);
     }
 
-    // Add current location marker (end location for completed trips)
-    if (currentLocation) {
+    // Add current location marker (end location for completed trips) - only if valid
+    if (isValidLocation(currentLocation)) {
+      console.log('✅ Adding valid current marker:', currentLocation);
       const currentMarker = new mapboxgl.Marker({ 
         color: '#ef4444' // Red for end
       })
         .setLngLat([currentLocation.lng, currentLocation.lat])
         .setPopup(new mapboxgl.Popup().setHTML('<div><strong>Slutpunkt</strong></div>'))
         .addTo(map.current);
+    } else if (currentLocation) {
+      console.warn('⚠️ Invalid current location data:', currentLocation);
     }
 
     // Add route if available
@@ -211,14 +236,20 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       const bounds = new mapboxgl.LngLatBounds();
       coordinates.forEach(coord => bounds.extend(coord));
       map.current.fitBounds(bounds, { padding: 50 });
-    } else if (startLocation || currentLocation) {
-      // If no route but have locations, center on them
-      const centerLocation = currentLocation || startLocation;
+    } else {
+      // If no route but have valid locations, center on them
+      const validCurrentLocation = isValidLocation(currentLocation) ? currentLocation : null;
+      const validStartLocation = isValidLocation(startLocation) ? startLocation : null;
+      const centerLocation = validCurrentLocation || validStartLocation;
+      
       if (centerLocation) {
+        console.log('🎯 Centering map on valid location:', centerLocation);
         map.current.flyTo({
           center: [centerLocation.lng, centerLocation.lat],
           zoom: 15
         });
+      } else {
+        console.log('📍 No valid locations found, keeping default center');
       }
     }
   }, [mapLoaded, currentLocation, startLocation, route]);
