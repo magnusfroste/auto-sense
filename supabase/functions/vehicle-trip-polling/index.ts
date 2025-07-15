@@ -643,7 +643,17 @@ async function updateVehicleState(connectionId: string, state: any) {
     })
 
     if (updateResponse.ok) {
-      const result = await updateResponse.json()
+      // Check if there's content to parse
+      const responseText = await updateResponse.text()
+      let result = []
+      if (responseText) {
+        try {
+          result = JSON.parse(responseText)
+        } catch (e) {
+          console.log('📝 Empty response from update (expected for successful PATCH)')
+        }
+      }
+      
       if (result.length === 0) {
         // No rows updated, record doesn't exist - create new one
         console.log('🔄 No existing record found, creating new one')
