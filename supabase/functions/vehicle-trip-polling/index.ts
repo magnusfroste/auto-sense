@@ -417,7 +417,22 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
   } else if (hasMovedSignificantly) {
     // Start new trip
     console.log(`🚗 Starting new trip for vehicle ${connection.smartcar_vehicle_id} (moved ${movementDistance}m, threshold: ${tripConfig.movementThreshold}m)`)
-    await startNewTrip(connection, currentLocation, currentOdometer, tripConfig)
+    console.log(`🔧 Trip start conditions:`, {
+      hasMovedSignificantly,
+      movementDistance,
+      threshold: tripConfig.movementThreshold,
+      currentLocation,
+      currentOdometer,
+      userId: connection.user_id,
+      vehicleConnectionId: connection.id
+    })
+    
+    try {
+      await startNewTrip(connection, currentLocation, currentOdometer, tripConfig)
+      console.log(`✅ Trip creation attempt completed`)
+    } catch (error) {
+      console.error(`❌ Trip creation failed:`, error)
+    }
   } else {
     console.log(`⏸️ No significant movement detected (${movementDistance}m < ${tripConfig.movementThreshold}m threshold)`)
   }
@@ -456,10 +471,10 @@ async function getUserTripConfig(userId: string) {
   const profiles = profileResponse.ok ? await profileResponse.json() : []
   const profile = profiles.length > 0 ? profiles[0] : {}
 
-  // Return configuration with defaults
+  // Return configuration with defaults - TEMPORARY: Lower thresholds for testing
   return {
-    movementThreshold: profile.trip_movement_threshold_meters || 100,
-    stationaryTimeout: profile.trip_stationary_timeout_minutes || 2,
+    movementThreshold: profile.trip_movement_threshold_meters || 10, // Lowered from 100m to 10m
+    stationaryTimeout: profile.trip_stationary_timeout_minutes || 0.5, // Lowered from 2min to 30s
     minimumDistance: profile.trip_minimum_distance_meters || 500,
     maxDurationHours: profile.trip_max_duration_hours || 12,
     sensitivity: profile.trip_sensitivity_level || 'normal'
@@ -469,6 +484,16 @@ async function getUserTripConfig(userId: string) {
 async function startNewTrip(connection: any, location: any, odometer: number, tripConfig: any) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+  console.log(`🚗 Starting trip creation process...`)
+  console.log(`📋 Trip input data:`, {
+    connectionId: connection.id,
+    userId: connection.user_id,
+    vehicleId: connection.smartcar_vehicle_id,
+    location,
+    odometer,
+    tripConfig
+  })
 
   // Start as 'pending' for small movements, 'active' for significant movements
   const movementDistance = 0 // We'll calculate this if we have previous state
@@ -486,15 +511,34 @@ async function startNewTrip(connection: any, location: any, odometer: number, tr
   }
 
   console.log(`🆕 Creating new trip with status: ${status}`)
-  await fetch(`${supabaseUrl}/rest/v1/sense_trips`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${supabaseServiceKey}`,
-      'apikey': supabaseServiceKey,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(tripData)
-  })
+  console.log(`📦 Trip data being sent:`, JSON.stringify(tripData, null, 2))
+  
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/sense_trips`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(tripData)
+    })
+    
+    console.log(`📡 Trip creation response status: ${response.status}`)
+    
+    if (response.ok) {
+      const result = await response.json()
+      console.log(`✅ Trip created successfully:`, result)
+      return result
+    } else {
+      const errorText = await response.text()
+      console.error(`❌ Trip creation failed (${response.status}):`, errorText)
+      throw new Error(`Trip creation failed: ${errorText}`)
+    }
+  } catch (error) {
+    console.error(`❌ Error in startNewTrip:`, error)
+    throw error
+  }
 }
 
 async function promoteTripToActive(tripId: string) {
