@@ -198,7 +198,7 @@ export default function TripActiveSimple(): JSX.Element {
                 type: 'LineString',
                 coordinates: activeTrip.route_data
               } : undefined}
-              height="400px"
+              height="h-96"
               showNavigation={true}
             />
           </CardContent>
