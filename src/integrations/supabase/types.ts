@@ -785,6 +785,11 @@ export type Database = {
           theme: string | null
           timezone: string | null
           tracking_mode: string | null
+          trip_max_duration_hours: number | null
+          trip_minimum_distance_meters: number | null
+          trip_movement_threshold_meters: number | null
+          trip_sensitivity_level: string | null
+          trip_stationary_timeout_minutes: number | null
           updated_at: string
           username: string | null
         }
@@ -819,6 +824,11 @@ export type Database = {
           theme?: string | null
           timezone?: string | null
           tracking_mode?: string | null
+          trip_max_duration_hours?: number | null
+          trip_minimum_distance_meters?: number | null
+          trip_movement_threshold_meters?: number | null
+          trip_sensitivity_level?: string | null
+          trip_stationary_timeout_minutes?: number | null
           updated_at?: string
           username?: string | null
         }
@@ -853,6 +863,11 @@ export type Database = {
           theme?: string | null
           timezone?: string | null
           tracking_mode?: string | null
+          trip_max_duration_hours?: number | null
+          trip_minimum_distance_meters?: number | null
+          trip_movement_threshold_meters?: number | null
+          trip_sensitivity_level?: string | null
+          trip_stationary_timeout_minutes?: number | null
           updated_at?: string
           username?: string | null
         }
