@@ -211,6 +211,25 @@ async function getVehicleState(connectionId: string): Promise<VehicleState | nul
   return null
 }
 
+/**
+ * CORE TRIP DETECTION ALGORITHM
+ * 
+ * This function implements the main trip detection logic using configurable thresholds.
+ * 
+ * Algorithm Overview:
+ * 1. Get user's trip configuration (thresholds, timeouts, etc.)
+ * 2. Calculate vehicle movement since last poll
+ * 3. Apply trip state machine logic:
+ *    - No trip + movement → Start new trip (pending)
+ *    - Active trip + movement → Update trip
+ *    - Active trip + stationary → End trip (if timeout reached)
+ * 4. Apply safety mechanisms (max duration, min distance)
+ * 5. Update vehicle state with dynamic polling frequency
+ * 
+ * @param connection Vehicle connection data from database
+ * @param vehicleData Current vehicle data from Smartcar API
+ * @param lastState Previous vehicle state from database
+ */
 async function analyzeTripState(connection: any, vehicleData: any, lastState: VehicleState | null) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!

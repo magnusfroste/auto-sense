@@ -1,26 +1,64 @@
-# Welcome to your Lovable project
+# Sense - Intelligent Vehicle Trip Tracking
 
-## Project info
+## Overview
+Sense is an intelligent vehicle trip tracking application that automatically detects, records, and manages vehicle trips using Smartcar API integration. The system features a robust, configurable trip detection algorithm with real-time monitoring capabilities.
 
-**URL**: https://lovable.dev/projects/37ba7bea-4e4a-40da-b001-982449075670
+## Key Features
+- 🚗 **Automatic Trip Detection** - Smart algorithm detects trip start/end automatically
+- ⚙️ **Configurable Thresholds** - User-customizable sensitivity and timing settings
+- 🎯 **Intelligent Filtering** - Automatically filters out false positives and short trips
+- 📱 **Real-time Updates** - Live trip monitoring with dynamic polling
+- 🛡️ **Safety Mechanisms** - Prevents infinite trips and data corruption
+- 📊 **Trip Analytics** - Detailed trip metrics and historical data
 
-## How can I edit this code?
+## Trip Detection Algorithm
+The core trip detection uses a sophisticated state machine with configurable parameters:
 
-There are several ways of editing your application.
+### Configurable Settings (per user)
+- **Movement Threshold**: Minimum movement to start a trip (default: 100m)
+- **Stationary Timeout**: Time without movement to end trip (default: 2 min)
+- **Minimum Distance**: Minimum trip length to keep (default: 500m)
+- **Maximum Duration**: Safety limit for trip length (default: 12h)
+- **Sensitivity Level**: Overall detection sensitivity (low/normal/high)
+
+### Trip States
+- **Pending** - Trip just started, awaiting confirmation
+- **Active** - Confirmed ongoing trip
+- **Completed** - Finished and saved trip
+
+## Documentation
+- 📋 **[Trip Algorithm Details](docs/TRIP_ALGORITHM.md)** - Complete algorithm documentation
+- 🏗️ **Architecture** - Database schema and API endpoints
+- 🔧 **Configuration** - How to adjust trip detection settings
+- 🐛 **Troubleshooting** - Common issues and solutions
+
+## Tech Stack
+This project is built with:
+- **Frontend**: React + TypeScript + Tailwind CSS + shadcn-ui
+- **Backend**: Supabase (Database + Edge Functions + Realtime)
+- **Vehicle API**: Smartcar Integration
+- **Build Tool**: Vite
+
+### Key Files
+- `src/hooks/useVehicleTrip.tsx` - Frontend trip management
+- `src/hooks/useTrips.tsx` - Trip data management
+- `supabase/functions/vehicle-trip-polling/` - Core algorithm
+- `docs/TRIP_ALGORITHM.md` - Detailed algorithm documentation
+
+## Getting Started
+1. Connect your vehicle via Smartcar integration
+2. Configure your trip detection preferences in settings
+3. Start driving - trips will be detected automatically!
+
+---
+
+## Development
 
 **Use Lovable**
-
 Simply visit the [Lovable Project](https://lovable.dev/projects/37ba7bea-4e4a-40da-b001-982449075670) and start prompting.
 
-Changes made via Lovable will be committed automatically to this repo.
-
 **Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+If you want to work locally using your own IDE, you can clone this repo and push changes.
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
@@ -36,38 +74,13 @@ npm i
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Deployment
+Simply open [Lovable](https://lovable.dev/projects/37ba7bea-4e4a-40da-b001-982449075670) and click on Share → Publish.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/37ba7bea-4e4a-40da-b001-982449075670) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
+## Custom Domain
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Read more: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+---
+
+For detailed algorithm documentation and troubleshooting, see [docs/TRIP_ALGORITHM.md](docs/TRIP_ALGORITHM.md)
