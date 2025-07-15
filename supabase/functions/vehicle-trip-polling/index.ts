@@ -118,7 +118,7 @@ async function pollSingleVehicle(connectionId: string, connectionData?: any) {
   console.log(`Polling vehicle ${connection.smartcar_vehicle_id}`)
 
   // Get current vehicle data from Smartcar
-  const vehicleData = await fetchSmartcarData(connection.smartcar_vehicle_id, connection.access_token)
+  const vehicleData = await fetchSmartcarData(connection.smartcar_vehicle_id, connection.access_token, connectionId)
   
   // Get last known state from database
   const lastState = await getVehicleState(connectionId)
@@ -127,7 +127,7 @@ async function pollSingleVehicle(connectionId: string, connectionData?: any) {
   await analyzeTripState(connection, vehicleData, lastState)
 }
 
-async function fetchSmartcarData(vehicleId: string, accessToken: string) {
+async function fetchSmartcarData(vehicleId: string, accessToken: string, connectionId?: string) {
   console.log(`🚗 Fetching Smartcar data for vehicle ${vehicleId}`)
   
   try {
@@ -143,6 +143,18 @@ async function fetchSmartcarData(vehicleId: string, accessToken: string) {
 
     console.log(`📍 Location response status: ${locationRes.status}`)
     console.log(`🛣️ Odometer response status: ${odometerRes.status}`)
+
+    // Check if we need to refresh tokens (401 Unauthorized)
+    if ((locationRes.status === 401 || odometerRes.status === 401) && connectionId) {
+      console.log(`🔄 Token expired, attempting refresh for connection ${connectionId}`)
+      const newAccessToken = await refreshSmartcarToken(connectionId)
+      if (newAccessToken) {
+        console.log(`✅ Token refreshed, retrying API calls`)
+        return await fetchSmartcarData(vehicleId, newAccessToken, connectionId)
+      } else {
+        console.error(`❌ Token refresh failed for connection ${connectionId}`)
+      }
+    }
 
     const data: any = {
       location: null,
@@ -187,6 +199,87 @@ async function fetchSmartcarData(vehicleId: string, accessToken: string) {
       odometer: null,
       errors: [`Network error: ${error.message}`]
     }
+  }
+}
+
+async function refreshSmartcarToken(connectionId: string): Promise<string | null> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const smartcarClientId = Deno.env.get('SMARTCAR_CLIENT_ID')!
+  const smartcarClientSecret = Deno.env.get('SMARTCAR_CLIENT_SECRET')!
+
+  try {
+    // Get the current connection data with refresh token
+    const connectionResponse = await fetch(`${supabaseUrl}/rest/v1/vehicle_connections?id=eq.${connectionId}&select=refresh_token`, {
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!connectionResponse.ok) {
+      console.error('Failed to fetch connection data for token refresh')
+      return null
+    }
+
+    const connections = await connectionResponse.json()
+    if (connections.length === 0) {
+      console.error('Connection not found for token refresh')
+      return null
+    }
+
+    const refreshToken = connections[0].refresh_token
+
+    // Request new access token from Smartcar
+    const tokenResponse = await fetch('https://auth.smartcar.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${btoa(`${smartcarClientId}:${smartcarClientSecret}`)}`
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      })
+    })
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text()
+      console.error(`Failed to refresh token: ${tokenResponse.status} - ${errorText}`)
+      return null
+    }
+
+    const tokenData = await tokenResponse.json()
+    const newAccessToken = tokenData.access_token
+    const newRefreshToken = tokenData.refresh_token || refreshToken // Use new refresh token if provided
+
+    // Update the connection with new tokens
+    const updateResponse = await fetch(`${supabaseUrl}/rest/v1/vehicle_connections?id=eq.${connectionId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        access_token: newAccessToken,
+        refresh_token: newRefreshToken,
+        updated_at: new Date().toISOString()
+      })
+    })
+
+    if (!updateResponse.ok) {
+      console.error('Failed to update connection with new tokens')
+      return null
+    }
+
+    console.log(`✅ Successfully refreshed tokens for connection ${connectionId}`)
+    return newAccessToken
+
+  } catch (error) {
+    console.error('Error refreshing Smartcar token:', error)
+    return null
   }
 }
 
