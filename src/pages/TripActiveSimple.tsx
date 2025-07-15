@@ -6,7 +6,9 @@ import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
 import { MapComponent } from '@/components/map/MapComponent';
 import { supabase } from '@/integrations/supabase/client';
-import { Car, MapPin, Gauge, Clock, RefreshCw, Route, Timer } from 'lucide-react';
+import { Car, MapPin, Gauge, Clock, RefreshCw, Route, Timer, Play, Bug } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 interface VehicleState {
   id: string;
@@ -23,6 +25,8 @@ export default function TripActiveSimple(): JSX.Element {
   const [vehicleState, setVehicleState] = useState<VehicleState | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [isCreatingTrip, setIsCreatingTrip] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchVehicleState();
@@ -121,6 +125,59 @@ export default function TripActiveSimple(): JSX.Element {
     }
   };
 
+  const manualCreateTrip = async () => {
+    if (!vehicleState?.last_location || !vehicleState?.last_odometer) {
+      toast({
+        title: 'Kan inte skapa resa',
+        description: 'Saknar position eller odometer data',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsCreatingTrip(true);
+    try {
+      console.log('🚗 Manually creating trip...');
+      
+      const { data, error } = await supabase
+        .from('sense_trips')
+        .insert([{
+          user_id: user?.id,
+          vehicle_connection_id: connections[0]?.id,
+          start_location: vehicleState.last_location,
+          odometer_km: vehicleState.last_odometer,
+          trip_type: 'unknown',
+          trip_status: 'active',
+          is_automatic: false,
+          notes: 'Manuellt skapad resa'
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('✅ Manual trip created:', data);
+      
+      toast({
+        title: 'Resa skapad',
+        description: 'Manuell resa har startats framgångsrikt'
+      });
+
+      // Refresh data to show the new trip
+      await fetchVehicleState();
+      
+    } catch (error: any) {
+      console.error('❌ Manual trip creation error:', error);
+      toast({
+        title: 'Fel vid skapande av resa',
+        description: error.message || 'Kunde inte skapa resa manuellt',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCreatingTrip(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-4 lg:p-6">
@@ -165,14 +222,31 @@ export default function TripActiveSimple(): JSX.Element {
             {vehicle.make} {vehicle.model} {vehicle.year && `(${vehicle.year})`}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={refreshData}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Uppdatera
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshData}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Uppdatera
+          </Button>
+          {!activeTrip && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={manualCreateTrip}
+              disabled={isCreatingTrip}
+            >
+              {isCreatingTrip ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4 mr-2" />
+              )}
+              {isCreatingTrip ? 'Skapar...' : 'Starta resa'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Live Map with Trip Data */}
@@ -341,6 +415,41 @@ export default function TripActiveSimple(): JSX.Element {
           </div>
         </CardContent>
       </Card>
+
+      {/* Debug Panel - Only in development */}
+      {process.env.NODE_ENV !== 'production' && (
+        <Card className="border-dashed border-yellow-300 bg-yellow-50/50 dark:bg-yellow-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center text-yellow-800 dark:text-yellow-200">
+              <Bug className="mr-2 h-5 w-5" />
+              Trip Detection Debug
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Trip Status:</p>
+                <Badge variant={activeTrip ? "default" : "secondary"}>
+                  {activeTrip ? 'Aktiv resa' : 'Ingen resa'}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-2">Movement Detection:</p>
+                <Badge variant="outline">
+                  Treshold: 10m (testläge)
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>• Auto-polling: var 30s</p>
+              <p>• Movement threshold: 10m (sänkt från 100m för testning)</p>
+              <p>• Trip timeout: 30s (sänkt från 2min för testning)</p>
+              <p>• Check browser console för detaljerad logging</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Last Update Info */}
       <div className="text-center text-xs text-muted-foreground">
