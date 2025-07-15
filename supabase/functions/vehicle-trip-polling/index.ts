@@ -316,28 +316,44 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
     const activeTrip = activeTrips[0]
     
     // Check if vehicle has been stationary too long
-    const lastPollTime = lastState?.last_poll_time ? new Date(lastState.last_poll_time) : new Date()
+    // We need to track when the vehicle last moved significantly, not just when we last polled
     const currentTime = new Date()
-    const minutesSinceLastMovement = (currentTime.getTime() - lastPollTime.getTime()) / (1000 * 60)
+    let minutesSinceLastMovement = 0
     
-    if (!hasMovedSignificantly && minutesSinceLastMovement >= tripConfig.stationaryTimeout) {
-      console.log(`🏁 Vehicle stationary for ${minutesSinceLastMovement.toFixed(1)}min (≥${tripConfig.stationaryTimeout}min), ending trip`)
+    if (!hasMovedSignificantly) {
+      // Calculate time since trip started (more reliable for stationary detection)
+      const tripStartTime = new Date(activeTrip.start_time)
+      const timeSinceTripStart = (currentTime.getTime() - tripStartTime.getTime()) / (1000 * 60)
       
-      try {
-        await endTrip(activeTrip, currentLocation, currentOdometer, tripConfig)
-        console.log(`✅ Trip ${activeTrip.id} ended due to stationary timeout`)
+      // Use a simple approach: if the trip has been running for more than 2 minutes 
+      // AND no significant movement in this poll, consider ending it
+      const stationaryThreshold = tripConfig.stationaryTimeout
+      
+      console.log(`⏱️ Stationary check: trip running for ${timeSinceTripStart.toFixed(1)}min, no movement this poll, threshold: ${stationaryThreshold}min`)
+      
+      if (timeSinceTripStart >= stationaryThreshold) {
+        console.log(`🏁 Trip running for ${timeSinceTripStart.toFixed(1)}min without movement (≥${stationaryThreshold}min), ending trip`)
         
-        // Clear the current trip ID since we ended it
-        await updateVehicleState(connection.id, {
-          last_odometer: currentOdometer,
-          last_location: currentLocation,
-          last_poll_time: currentTime.toISOString(),
-          current_trip_id: null,
-          polling_frequency: 120 // Back to normal polling
-        })
-        return
-      } catch (error) {
-        console.error(`❌ Failed to end trip:`, error)
+        try {
+          await endTrip(activeTrip, currentLocation, currentOdometer, tripConfig)
+          console.log(`✅ Trip ${activeTrip.id} ended due to stationary timeout`)
+          
+          // Clear the current trip ID since we ended it
+          await updateVehicleState(connection.id, {
+            last_odometer: currentOdometer,
+            last_location: currentLocation,
+            last_poll_time: currentTime.toISOString(),
+            current_trip_id: null,
+            polling_frequency: 120 // Back to normal polling
+          })
+          return
+        } catch (error) {
+          console.error(`❌ Failed to end trip:`, error)
+        }
+      } else {
+        // Update existing trip with new data even if no movement
+        await updateOngoingTrip(activeTrip, currentLocation, currentOdometer)
+        console.log(`🔄 Updated ongoing trip ${activeTrip.id} with new odometer: ${currentOdometer}km (no movement)`)
       }
     } else {
       // Update existing trip with new data
