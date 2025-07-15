@@ -333,14 +333,41 @@ export default function Trips() {
                       <MapPin className="h-4 w-4 mr-2 text-primary" />
                       <span className="font-medium">Sträckning på karta</span>
                     </div>
-                    <MapComponent
-                      startLocation={trip.start_location}
-                      currentLocation={trip.end_location}
-                      route={trip.route_data || []}
-                      height="h-80"
-                      className="w-full"
-                      showNavigation={true}
-                    />
+                    {/* Show error message if location data is invalid */}
+                    {(!trip.start_location_transformed && !trip.end_location_transformed) ? (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <div className="flex items-center">
+                          <AlertCircle className="h-5 w-5 text-orange-600 mr-2" />
+                          <span className="text-orange-800">
+                            Ogiltig platsdata för denna resa. Kartan kan inte visas.
+                          </span>
+                        </div>
+                        {showDebug && (
+                          <div className="mt-2 text-xs text-orange-700">
+                            <div><strong>Start location:</strong> {JSON.stringify(trip.start_location)}</div>
+                            <div><strong>End location:</strong> {JSON.stringify(trip.end_location)}</div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        {showDebug && (
+                          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                            <div><strong>Debug - Location data:</strong></div>
+                            <div>Start: {JSON.stringify(trip.start_location_transformed)}</div>
+                            <div>End: {JSON.stringify(trip.end_location_transformed)}</div>
+                          </div>
+                        )}
+                        <MapComponent
+                          startLocation={trip.start_location_transformed}
+                          currentLocation={trip.end_location_transformed}
+                          route={trip.route_data || []}
+                          height="h-80"
+                          className="w-full"
+                          showNavigation={true}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

@@ -9,6 +9,37 @@ interface LocationData {
   address?: string;
 }
 
+// Helper function to transform database location format to MapComponent format
+const transformLocationData = (dbLocation: any): LocationData | null => {
+  if (!dbLocation) return null;
+  
+  // Handle different possible formats from database
+  if (typeof dbLocation === 'object') {
+    // If already in correct format (lat/lng)
+    if (typeof dbLocation.lat === 'number' && typeof dbLocation.lng === 'number') {
+      return {
+        lat: dbLocation.lat,
+        lng: dbLocation.lng,
+        address: dbLocation.address
+      };
+    }
+    
+    // If in database format (latitude/longitude)
+    if (typeof dbLocation.latitude === 'number' && typeof dbLocation.longitude === 'number') {
+      return {
+        lat: dbLocation.latitude,
+        lng: dbLocation.longitude,
+        address: dbLocation.address
+      };
+    }
+    
+    // Log unrecognized format
+    console.warn('⚠️ Unrecognized location format:', dbLocation);
+  }
+  
+  return null;
+};
+
 interface Trip {
   id?: string;
   user_id?: string;
@@ -25,6 +56,9 @@ interface Trip {
   vehicle_connection_id?: string;
   created_at?: string;
   updated_at?: string;
+  // Transformed location data for MapComponent
+  start_location_transformed?: LocationData | null;
+  end_location_transformed?: LocationData | null;
 }
 
 export const useTrips = () => {
@@ -56,11 +90,31 @@ export const useTrips = () => {
           id: t.id, 
           status: t.trip_status, 
           created: t.created_at,
-          end_time: t.end_time 
+          end_time: t.end_time,
+          start_location_raw: t.start_location,
+          end_location_raw: t.end_location
         })) || []
       });
       
-      setTrips(data || []);
+      // Transform location data for MapComponent compatibility
+      const tripsWithTransformedLocations = (data || []).map(trip => ({
+        ...trip,
+        start_location_transformed: transformLocationData(trip.start_location),
+        end_location_transformed: transformLocationData(trip.end_location)
+      }));
+      
+      console.log('🔄 Transformed trip locations:', {
+        count: tripsWithTransformedLocations.length,
+        sample: tripsWithTransformedLocations.slice(0, 2).map(t => ({
+          id: t.id,
+          start_original: t.start_location,
+          start_transformed: t.start_location_transformed,
+          end_original: t.end_location,
+          end_transformed: t.end_location_transformed
+        }))
+      });
+      
+      setTrips(tripsWithTransformedLocations);
       setLastRefresh(new Date());
     } catch (error) {
       console.error('❌ Error fetching trips:', error);
