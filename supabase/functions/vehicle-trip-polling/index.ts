@@ -345,13 +345,15 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
   // Get user's trip configuration from profile
   const tripConfig = await getUserTripConfig(connection.user_id)
   
-  // Calculate movement distance
+  // Calculate movement distance based on odometer
   const movementDistance = lastState?.last_odometer ? 
-    Math.abs(currentOdometer - lastState.last_odometer) : 0
+    Math.abs(currentOdometer - lastState.last_odometer) * 1000 : 0 // Convert km to meters
 
-  const hasMovedSignificantly = lastState?.last_odometer ? 
-    movementDistance >= tripConfig.movementThreshold :
-    true // If no previous state, assume movement
+  // For odometer-based detection: consider significant movement if:
+  // 1. No previous state exists (first reading)
+  // 2. Odometer has changed by threshold amount
+  const hasMovedSignificantly = !lastState?.last_odometer || 
+    movementDistance >= tripConfig.movementThreshold
 
   console.log(`🔍 Movement analysis for vehicle ${connection.smartcar_vehicle_id}:`, {
     currentOdometer,
@@ -499,11 +501,14 @@ async function startNewTrip(connection: any, location: any, odometer: number, tr
   const movementDistance = 0 // We'll calculate this if we have previous state
   const status = movementDistance >= tripConfig.movementThreshold * 2 ? 'active' : 'pending'
 
+  // Use a default location if GPS is not available (Smartcar simulator issue)
+  const startLocation = location || { latitude: 0, longitude: 0 }
+  
   const tripData = {
     user_id: connection.user_id,
     vehicle_connection_id: connection.id,
     start_time: new Date().toISOString(),
-    start_location: location || {},
+    start_location: startLocation,
     trip_status: status,
     trip_type: 'unknown',
     odometer_km: odometer ? Math.round(odometer / 1000) : null,
