@@ -17,16 +17,20 @@ import {
   Edit,
   Trash2,
   Briefcase,
-  Home
+  Home,
+  RefreshCw,
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
 export default function Trips() {
-  const { trips, loading, deleteTrip } = useTrips();
+  const { trips, loading, error, lastRefresh, refreshTrips, deleteTrip } = useTrips();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'work' | 'personal'>('all');
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   const filteredTrips = trips.filter(trip => {
     const matchesSearch = trip.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -89,10 +93,82 @@ export default function Trips() {
   return (
     <div className="p-4 lg:p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Mina resor</h1>
-        <p className="text-muted-foreground">Översikt och hantering av alla dina registrerade resor</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Mina resor</h1>
+          <p className="text-muted-foreground">Översikt och hantering av alla dina registrerade resor</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDebug(!showDebug)}
+          >
+            <Info className="h-4 w-4 mr-1" />
+            {showDebug ? 'Dölj debug' : 'Visa debug'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshTrips}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            Uppdatera
+          </Button>
+        </div>
       </div>
+
+      {/* Debug Information */}
+      {showDebug && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="flex items-center text-orange-800">
+              <Info className="mr-2 h-5 w-5" />
+              Debug Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-2">
+            <div><strong>Antal resor i state:</strong> {trips.length}</div>
+            <div><strong>Senaste uppdatering:</strong> {lastRefresh.toLocaleString('sv-SE')}</div>
+            <div><strong>Loading:</strong> {loading ? 'Ja' : 'Nej'}</div>
+            {error && (
+              <div className="text-red-600">
+                <strong>Fel:</strong> {error}
+              </div>
+            )}
+            <div><strong>Resor breakdown:</strong></div>
+            <ul className="ml-4 space-y-1">
+              {trips.slice(0, 5).map(trip => (
+                <li key={trip.id} className="text-xs">
+                  {trip.id?.substring(0, 8)}... - {trip.trip_status} - 
+                  {trip.created_at ? new Date(trip.created_at).toLocaleString('sv-SE') : 'No date'}
+                  {trip.end_time ? ` (slutad: ${new Date(trip.end_time).toLocaleString('sv-SE')})` : ' (aktiv)'}
+                </li>
+              ))}
+              {trips.length > 5 && <li className="text-xs">...och {trips.length - 5} till</li>}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error Alert */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="flex items-center py-4">
+            <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+            <span className="text-red-800">{error}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshTrips}
+              className="ml-auto"
+            >
+              Försök igen
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>

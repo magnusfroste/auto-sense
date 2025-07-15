@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
@@ -32,11 +32,15 @@ export const useTrips = () => {
   const { toast } = useToast();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  const fetchTrips = async () => {
+  const fetchTrips = useCallback(async () => {
     if (!user) return;
     
+    console.log('🔄 Fetching trips for user:', user.id);
     setLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('sense_trips')
@@ -45,9 +49,22 @@ export const useTrips = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('📊 Fetched trips:', {
+        count: data?.length || 0,
+        trips: data?.map(t => ({ 
+          id: t.id, 
+          status: t.trip_status, 
+          created: t.created_at,
+          end_time: t.end_time 
+        })) || []
+      });
+      
       setTrips(data || []);
+      setLastRefresh(new Date());
     } catch (error) {
-      console.error('Error fetching trips:', error);
+      console.error('❌ Error fetching trips:', error);
+      setError('Kunde inte ladda resor');
       toast({
         title: 'Fel vid hämtning av resor',
         description: 'Kunde inte ladda dina resor',
@@ -56,7 +73,7 @@ export const useTrips = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   const saveTrip = async (tripData: {
     start_time: string;
@@ -173,9 +190,44 @@ export const useTrips = () => {
     }
   };
 
+  // Set up real-time subscription for trips
   useEffect(() => {
+    if (!user) return;
+    
     fetchTrips();
-  }, [user]);
+    
+    // Set up real-time subscription
+    console.log('🔄 Setting up real-time subscription for trips');
+    const channel = supabase
+      .channel('sense_trips_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sense_trips',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('📡 Real-time trip change:', payload);
+          // Refresh trips when changes occur
+          fetchTrips();
+        }
+      )
+      .subscribe();
+
+    // Set up automatic refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('⏰ Automatic refresh');
+      fetchTrips();
+    }, 30000);
+
+    return () => {
+      console.log('🧹 Cleaning up trip subscriptions');
+      supabase.removeChannel(channel);
+      clearInterval(refreshInterval);
+    };
+  }, [user, fetchTrips]);
 
   // Add refreshTrips function for external use
   const refreshTrips = () => {
@@ -185,6 +237,8 @@ export const useTrips = () => {
   return {
     trips,
     loading,
+    error,
+    lastRefresh,
     saveTrip,
     updateTrip,
     deleteTrip,
