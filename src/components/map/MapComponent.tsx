@@ -31,15 +31,15 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const { token, loading, error } = useMapbox();
 
-  // Initialize map when token is available
+  // Initialize map when token is available (only once)
   useEffect(() => {
-    console.log('🗺️ MapComponent effect triggered:', { 
+    console.log('🗺️ MapComponent init effect triggered:', { 
       hasToken: !!token, 
       hasContainer: !!mapContainer.current, 
-      hasMap: !!map.current,
-      currentLocation 
+      hasMap: !!map.current
     });
 
     if (!token || !mapContainer.current || map.current) return;
@@ -48,10 +48,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       console.log('🗺️ Initializing Mapbox map...');
       mapboxgl.accessToken = token;
       
-      // Default to Stockholm if no location provided
-      const defaultCenter: [number, number] = currentLocation ? 
-        [currentLocation.lng, currentLocation.lat] : 
-        [18.0686, 59.3293]; // Stockholm
+      // Default to Stockholm - we'll update center with markers/route later
+      const defaultCenter: [number, number] = [18.0686, 59.3293]; // Stockholm
 
       console.log('🗺️ Map center:', defaultCenter);
 
@@ -59,7 +57,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v12',
         center: defaultCenter,
-        zoom: currentLocation ? 15 : 10,
+        zoom: 10, // Start zoomed out, will adjust based on content
         pitch: 0,
       });
 
@@ -76,6 +74,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       }
 
       map.current.on('load', () => {
+        console.log('✅ Mapbox map loaded successfully');
         setMapLoaded(true);
       });
 
@@ -91,18 +90,20 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       map.current.addControl(geolocate);
 
     } catch (err) {
-      console.error('Error initializing map:', err);
+      console.error('❌ Error initializing map:', err);
+      setMapError(err instanceof Error ? err.message : 'Failed to initialize map');
     }
 
     // Cleanup
     return () => {
+      console.log('🗺️ Cleaning up map...');
       if (map.current) {
         map.current.remove();
         map.current = null;
         setMapLoaded(false);
       }
     };
-  }, [token, showNavigation]);
+  }, [token, showNavigation]); // Only depend on token and showNavigation, NOT currentLocation
 
   // Helper function to extract coordinates from route data
   const getRouteCoordinates = (routeData: any): [number, number][] => {
@@ -136,6 +137,13 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
   // Update markers when locations change
   useEffect(() => {
+    console.log('🗺️ MapComponent markers effect triggered:', { 
+      mapLoaded, 
+      hasCurrentLocation: !!currentLocation,
+      hasStartLocation: !!startLocation,
+      routeLength: route ? getRouteCoordinates(route).length : 0
+    });
+    
     if (!map.current || !mapLoaded) return;
 
     // Clear existing markers and sources
@@ -216,6 +224,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   }, [mapLoaded, currentLocation, startLocation, route]);
 
   if (loading) {
+    console.log('🗺️ MapComponent is loading...');
     return (
       <Card className={`${className} ${height} flex items-center justify-center`}>
         <div className="text-center">
@@ -226,17 +235,21 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     );
   }
 
-  if (error) {
+  if (error || mapError) {
+    const displayError = error || mapError;
+    console.log('🗺️ MapComponent has error:', displayError);
     return (
       <Card className={`${className} ${height} flex items-center justify-center`}>
         <div className="text-center">
           <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Kunde inte ladda karta</p>
-          <p className="text-xs text-muted-foreground">{error}</p>
+          <p className="text-xs text-muted-foreground">{displayError}</p>
         </div>
       </Card>
     );
   }
+
+  console.log('🗺️ MapComponent rendering map container, token available:', !!token);
 
   return (
     <Card className={`${className} ${height} overflow-hidden`}>
