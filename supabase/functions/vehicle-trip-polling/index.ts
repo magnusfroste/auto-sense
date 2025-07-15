@@ -166,11 +166,14 @@ async function fetchSmartcarData(vehicleId: string, accessToken: string, connect
 
     if (locationRes.ok) {
       const locationData = await locationRes.json()
-      console.log(`✅ Location data:`, locationData)
-      data.location = locationData.data || {
+      console.log(`✅ Raw location response:`, JSON.stringify(locationData, null, 2))
+      
+      // Smartcar API returns data directly in the response root
+      data.location = {
         latitude: locationData.latitude,
         longitude: locationData.longitude
       }
+      console.log(`📍 Parsed location:`, data.location)
     } else {
       const locationError = await locationRes.text()
       console.error(`❌ Location error (${locationRes.status}):`, locationError)
@@ -179,10 +182,13 @@ async function fetchSmartcarData(vehicleId: string, accessToken: string, connect
 
     if (odometerRes.ok) {
       const odometerData = await odometerRes.json()
-      console.log(`✅ Odometer data:`, odometerData)
-      data.odometer = odometerData.data || {
+      console.log(`✅ Raw odometer response:`, JSON.stringify(odometerData, null, 2))
+      
+      // Smartcar API returns data directly in the response root
+      data.odometer = {
         distance: odometerData.distance
       }
+      console.log(`🛣️ Parsed odometer:`, data.odometer)
     } else {
       const odometerError = await odometerRes.text()
       console.error(`❌ Odometer error (${odometerRes.status}):`, odometerError)
