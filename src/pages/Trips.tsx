@@ -33,9 +33,12 @@ export default function Trips() {
   const [showDebug, setShowDebug] = useState(false);
 
   const filteredTrips = trips.filter(trip => {
-    const matchesSearch = trip.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = !searchTerm || 
+                         trip.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          trip.start_location?.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         trip.end_location?.address?.toLowerCase().includes(searchTerm.toLowerCase());
+                         trip.end_location?.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         trip.start_location_transformed?.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         trip.end_location_transformed?.address?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesFilter = filterType === 'all' || trip.trip_type === filterType;
     
