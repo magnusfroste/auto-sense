@@ -156,7 +156,7 @@ export default function TestMap() {
                 type: 'LineString',
                 coordinates: testRoute
               }}
-              height="500px"
+              height="h-96"
               showNavigation={true}
             />
           )}
@@ -167,7 +167,7 @@ export default function TestMap() {
                 lat: vehicleState.last_location.latitude,
                 lng: vehicleState.last_location.longitude
               } : testLocation}
-              height="500px"
+              height="h-96"
               showNavigation={true}
             />
           )}
@@ -189,7 +189,7 @@ export default function TestMap() {
                 type: 'LineString',
                 coordinates: activeTrip.route_data
               } : undefined}
-              height="500px"
+              height="h-96"
               showNavigation={true}
             />
           )}
