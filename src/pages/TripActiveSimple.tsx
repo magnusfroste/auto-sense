@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
 import { MapComponent } from '@/components/map/MapComponent';
+import { TripDebugPanel } from '@/components/vehicle/TripDebugPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { Car, MapPin, Gauge, Clock, RefreshCw, Route, Timer, Play, Bug, Square } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -504,40 +505,8 @@ export default function TripActiveSimple(): JSX.Element {
         </CardContent>
       </Card>
 
-      {/* Debug Panel - Only in development */}
-      {process.env.NODE_ENV !== 'production' && (
-        <Card className="border-dashed border-yellow-300 bg-yellow-50/50 dark:bg-yellow-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center text-yellow-800 dark:text-yellow-200">
-              <Bug className="mr-2 h-5 w-5" />
-              Trip Detection Debug
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium mb-2">Trip Status:</p>
-                <Badge variant={activeTrip ? "default" : "secondary"}>
-                  {activeTrip ? 'Aktiv resa' : 'Ingen resa'}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm font-medium mb-2">Movement Detection:</p>
-                <Badge variant="outline">
-                  Treshold: 10m (testläge)
-                </Badge>
-              </div>
-            </div>
-            
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>• Auto-polling: var 30s</p>
-              <p>• Movement threshold: 10m (sänkt från 100m för testning)</p>
-              <p>• Trip timeout: 30s (sänkt från 2min för testning)</p>
-              <p>• Check browser console för detaljerad logging</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Trip Debug Panel */}
+      <TripDebugPanel />
 
       {/* Last Update Info */}
       <div className="text-center text-xs text-muted-foreground">

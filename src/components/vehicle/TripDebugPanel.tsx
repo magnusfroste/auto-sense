@@ -22,8 +22,13 @@ export const TripDebugPanel = () => {
   const { toast } = useToast();
 
   const fetchVehicleStateHistory = async () => {
-    if (connections.length === 0) return;
+    if (connections.length === 0) {
+      console.log('🔧 Debug: No connections available for history fetch');
+      return;
+    }
 
+    console.log('🔧 Debug: Fetching vehicle state history for connection:', connections[0].id);
+    
     try {
       const { data, error } = await supabase
         .from('vehicle_states')
