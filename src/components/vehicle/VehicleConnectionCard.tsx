@@ -75,7 +75,9 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
 
       if (error) throw error;
       
-      console.log('Received vehicle data:', data);
+      console.log('🚗 Received vehicle data:', data);
+      console.log('🔍 VIN from API:', data?.info?.vin || 'No VIN received');
+      console.log('🔍 All vehicle info:', data?.info);
       setVehicleData(data?.data || data);
       setLastUpdated(new Date());
     } catch (error: any) {
@@ -105,7 +107,9 @@ export const VehicleConnectionCard = ({ connection }: VehicleConnectionCardProps
           <div>
             <CardTitle className="text-lg">{getVehicleName()}</CardTitle>
             <CardDescription>
-              {connection.vin ? `VIN: ${connection.vin.slice(-6)}` : 'VIN ej tillgängligt'}
+              {connection.vin ? `VIN: ${connection.vin.slice(-6)}` : 
+               vehicleData?.info ? `Smartcar ID: ${connection.smartcar_vehicle_id.slice(-6)}` : 
+               'Fordonsinformation hämtas...'}
             </CardDescription>
           </div>
         </div>
