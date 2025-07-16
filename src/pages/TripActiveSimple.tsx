@@ -42,6 +42,22 @@ export default function TripActiveSimple(): JSX.Element {
     };
   }, [connections]);
 
+  // Memoize location props to prevent unnecessary re-renders
+  const currentLocation = useMemo(() => vehicleState?.last_location ? {
+    lat: vehicleState.last_location.latitude,
+    lng: vehicleState.last_location.longitude
+  } : undefined, [vehicleState?.last_location?.latitude, vehicleState?.last_location?.longitude]);
+
+  const startLocation = useMemo(() => activeTrip?.start_location ? {
+    lat: activeTrip.start_location.latitude,
+    lng: activeTrip.start_location.longitude
+  } : undefined, [activeTrip?.start_location?.latitude, activeTrip?.start_location?.longitude]);
+
+  const route = useMemo(() => activeTrip?.route_data ? {
+    type: 'LineString',
+    coordinates: activeTrip.route_data
+  } : undefined, [activeTrip?.route_data]);
+
   const fetchVehicleState = async () => {
     if (connections.length === 0) {
       setLoading(false);
@@ -341,18 +357,9 @@ export default function TripActiveSimple(): JSX.Element {
           </CardHeader>
           <CardContent>
             <MapComponent
-              currentLocation={useMemo(() => vehicleState?.last_location ? {
-                lat: vehicleState.last_location.latitude,
-                lng: vehicleState.last_location.longitude
-              } : undefined, [vehicleState?.last_location?.latitude, vehicleState?.last_location?.longitude])}
-              startLocation={useMemo(() => activeTrip?.start_location ? {
-                lat: activeTrip.start_location.latitude,
-                lng: activeTrip.start_location.longitude
-              } : undefined, [activeTrip?.start_location?.latitude, activeTrip?.start_location?.longitude])}
-              route={useMemo(() => activeTrip?.route_data ? {
-                type: 'LineString',
-                coordinates: activeTrip.route_data
-              } : undefined, [activeTrip?.route_data])}
+              currentLocation={currentLocation}
+              startLocation={startLocation}
+              route={route}
               height="h-96"
               showNavigation={true}
             />
