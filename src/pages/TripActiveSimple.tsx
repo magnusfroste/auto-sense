@@ -6,7 +6,7 @@ import { useVehicleConnections } from '@/hooks/useVehicleConnections';
 import { useActiveTrip } from '@/hooks/useActiveTrip';
 import { MapComponent } from '@/components/map/MapComponent';
 import { supabase } from '@/integrations/supabase/client';
-import { Car, MapPin, Gauge, Clock, RefreshCw, Route, Timer, Play, Bug } from 'lucide-react';
+import { Car, MapPin, Gauge, Clock, RefreshCw, Route, Timer, Play, Bug, Square } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
@@ -26,6 +26,7 @@ export default function TripActiveSimple(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [isCreatingTrip, setIsCreatingTrip] = useState(false);
+  const [isEndingTrip, setIsEndingTrip] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -178,6 +179,59 @@ export default function TripActiveSimple(): JSX.Element {
     }
   };
 
+  const manualEndTrip = async () => {
+    if (!activeTrip) {
+      toast({
+        title: 'Ingen aktiv resa',
+        description: 'Det finns ingen resa att avsluta',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsEndingTrip(true);
+    try {
+      console.log('🛑 Manually ending trip:', activeTrip.id);
+      
+      const { data, error } = await supabase
+        .from('sense_trips')
+        .update({
+          trip_status: 'completed',
+          end_time: new Date().toISOString(),
+          end_location: vehicleState?.last_location || activeTrip.start_location,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeTrip.id)
+        .eq('user_id', user?.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('✅ Trip ended manually:', data);
+      
+      toast({
+        title: 'Resa avslutad',
+        description: 'Resan har avslutats manuellt'
+      });
+
+      // Refresh data to update UI
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('❌ Manual trip end error:', error);
+      toast({
+        title: 'Fel vid avslutning av resa',
+        description: error.message || 'Kunde inte avsluta resa manuellt',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsEndingTrip(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-4 lg:p-6">
@@ -244,6 +298,21 @@ export default function TripActiveSimple(): JSX.Element {
                 <Play className="h-4 w-4 mr-2" />
               )}
               {isCreatingTrip ? 'Skapar...' : 'Starta resa'}
+            </Button>
+          )}
+          {activeTrip && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={manualEndTrip}
+              disabled={isEndingTrip}
+            >
+              {isEndingTrip ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Square className="h-4 w-4 mr-2" />
+              )}
+              {isEndingTrip ? 'Avslutar...' : 'Avsluta resa'}
             </Button>
           )}
         </div>
