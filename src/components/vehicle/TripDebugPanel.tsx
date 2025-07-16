@@ -1,16 +1,72 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useVehicleConnections } from '@/hooks/useVehicleConnections';
-import { RefreshCw, Bug, Play } from 'lucide-react';
+import { RefreshCw, Bug, Play, Clock } from 'lucide-react';
+
+interface VehicleStateHistory {
+  timestamp: string;
+  odometer: number;
+  delta: number;
+  poll_time: string;
+}
 
 export const TripDebugPanel = () => {
   const [isPolling, setIsPolling] = useState(false);
+  const [stateHistory, setStateHistory] = useState<VehicleStateHistory[]>([]);
   const { connections } = useVehicleConnections();
   const { toast } = useToast();
+
+  const fetchVehicleStateHistory = async () => {
+    if (connections.length === 0) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('vehicle_states')
+        .select('last_odometer, last_poll_time, updated_at')
+        .eq('connection_id', connections[0].id)
+        .order('updated_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const history: VehicleStateHistory[] = data
+          .filter(state => state.last_odometer !== null)
+          .map((state, index, array) => {
+            const odometer = state.last_odometer || 0;
+            const prevOdometer = array[index + 1]?.last_odometer || odometer;
+            const delta = Math.abs(odometer - prevOdometer) * 1000; // Convert km to meters
+            
+            return {
+              timestamp: state.updated_at,
+              odometer: odometer,
+              delta: index === array.length - 1 ? 0 : delta, // No delta for the oldest entry
+              poll_time: state.last_poll_time || state.updated_at
+            };
+          })
+          .reverse(); // Show oldest first for chronological order
+
+        setStateHistory(history);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle state history:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchVehicleStateHistory();
+    const interval = setInterval(fetchVehicleStateHistory, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, [connections]);
+
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString('sv-SE');
+  };
 
   const manualTriggerPolling = async () => {
     setIsPolling(true);
@@ -29,6 +85,9 @@ export const TripDebugPanel = () => {
         title: 'Polling triggrad',
         description: 'Automatisk trip detection har körts manuellt'
       });
+
+      // Refresh history after polling
+      setTimeout(() => fetchVehicleStateHistory(), 1000);
     } catch (error: any) {
       console.error('❌ Manual polling error:', error);
       toast({
@@ -89,6 +148,46 @@ export const TripDebugPanel = () => {
           <p>• Kontrollera logs i browser console</p>
           <p>• Treshold: 100m för resa, 2min för avslut</p>
         </div>
+
+        {stateHistory.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center text-sm font-medium text-yellow-800 dark:text-yellow-200">
+              <Clock className="mr-2 h-4 w-4" />
+              Odometer Historik (senaste 20)
+            </div>
+            <div className="max-h-64 overflow-auto border rounded">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Tid</TableHead>
+                    <TableHead className="text-xs">Odometer (km)</TableHead>
+                    <TableHead className="text-xs">Delta (m)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stateHistory.map((entry, index) => (
+                    <TableRow key={index} className="text-xs">
+                      <TableCell className="font-mono">
+                        {formatTime(entry.poll_time)}
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {entry.odometer.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        <span className={entry.delta > 0 ? 'text-green-600 font-medium' : 'text-gray-500'}>
+                          {entry.delta > 0 ? `+${entry.delta.toFixed(0)}` : '-'}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Uppdateras var 10:e sekund. Gröna värden indikerar rörelse.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
