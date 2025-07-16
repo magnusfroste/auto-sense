@@ -34,8 +34,9 @@ export const TripDebugPanel = () => {
         .from('vehicle_states')
         .select('last_odometer, last_poll_time, updated_at')
         .eq('connection_id', connections[0].id)
+        .not('last_odometer', 'is', null)
         .order('updated_at', { ascending: false })
-        .limit(20);
+        .limit(100); // Show more entries to see the full data stream
 
       if (error) throw error;
 
@@ -65,8 +66,30 @@ export const TripDebugPanel = () => {
 
   useEffect(() => {
     fetchVehicleStateHistory();
-    const interval = setInterval(fetchVehicleStateHistory, 10000); // Refresh every 10 seconds
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchVehicleStateHistory, 5000); // Refresh every 5 seconds for more real-time feel
+    
+    // Set up real-time subscription for vehicle_states updates
+    const channel = supabase
+      .channel('vehicle-states-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle_states'
+        },
+        (payload) => {
+          console.log('🔧 Debug: Vehicle state updated in real-time:', payload);
+          // Refresh data when vehicle_states changes
+          setTimeout(() => fetchVehicleStateHistory(), 500);
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [connections]);
 
   const formatTime = (timestamp: string) => {
@@ -158,9 +181,9 @@ export const TripDebugPanel = () => {
           <div className="space-y-2">
             <div className="flex items-center text-sm font-medium text-yellow-800 dark:text-yellow-200">
               <Clock className="mr-2 h-4 w-4" />
-              Odometer Historik (senaste 20)
+              Odometer Data Stream (varje API-anrop = ny rad)
             </div>
-            <div className="max-h-64 overflow-auto border rounded">
+            <div className="max-h-80 overflow-auto border rounded">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -171,12 +194,12 @@ export const TripDebugPanel = () => {
                 </TableHeader>
                 <TableBody>
                   {stateHistory.map((entry, index) => (
-                    <TableRow key={index} className="text-xs">
+                    <TableRow key={`${entry.timestamp}-${index}`} className="text-xs">
                       <TableCell className="font-mono">
                         {formatTime(entry.poll_time)}
                       </TableCell>
                       <TableCell className="font-mono">
-                        {entry.odometer.toFixed(2)}
+                        {entry.odometer.toFixed(3)}
                       </TableCell>
                       <TableCell className="font-mono">
                         <span className={entry.delta > 0 ? 'text-green-600 font-medium' : 'text-gray-500'}>
@@ -189,7 +212,7 @@ export const TripDebugPanel = () => {
               </Table>
             </div>
             <p className="text-xs text-muted-foreground">
-              Uppdateras var 10:e sekund. Gröna värden indikerar rörelse.
+              Real-time uppdateringar + refresh var 5:e sekund. Varje rad = en datapunkt från Smartcar API.
             </p>
           </div>
         )}
