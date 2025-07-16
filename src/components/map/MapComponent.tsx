@@ -32,6 +32,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [hasInitiallyPositioned, setHasInitiallyPositioned] = useState(false);
   const { token, loading, error } = useMapbox();
 
   // Wait for valid position data before initializing map
@@ -247,21 +248,25 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       const bounds = new mapboxgl.LngLatBounds();
       coordinates.forEach(coord => bounds.extend(coord));
       map.current.fitBounds(bounds, { padding: 50 });
-    } else {
-      // If no route but have valid locations, center on them
+      setHasInitiallyPositioned(true);
+    } else if (!hasInitiallyPositioned) {
+      // Only center on location the first time - don't move map during live updates
       const validCurrentLocation = isValidLocation(currentLocation) ? currentLocation : null;
       const validStartLocation = isValidLocation(startLocation) ? startLocation : null;
       const centerLocation = validCurrentLocation || validStartLocation;
       
       if (centerLocation) {
-        console.log('🎯 Centering map on valid location:', centerLocation);
+        console.log('🎯 Initial map positioning on location:', centerLocation);
         map.current.flyTo({
           center: [centerLocation.lng, centerLocation.lat],
           zoom: 15
         });
+        setHasInitiallyPositioned(true);
       } else {
         console.log('📍 No valid locations found, keeping default center');
       }
+    } else {
+      console.log('🗺️ Map already positioned, only updating markers');
     }
   }, [mapLoaded, currentLocation, startLocation, route]);
 
