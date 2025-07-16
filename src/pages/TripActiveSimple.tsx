@@ -31,14 +31,14 @@ export default function TripActiveSimple(): JSX.Element {
 
   useEffect(() => {
     fetchVehicleState();
-    // triggerPolling(); // TEMPORÄRT AVSTÄNGD - trigga första polling direkt
+    triggerPolling(); // Re-enabled automatic initial polling
     
     const dataInterval = setInterval(fetchVehicleState, 5000); // Uppdatera UI var 5:e sekund
-    // const pollingInterval = setInterval(triggerPolling, 30000); // TEMPORÄRT AVSTÄNGD - Trigga polling var 30:e sekund
+    const pollingInterval = setInterval(triggerPolling, 30000); // Re-enabled automatic polling every 30s
     
     return () => {
       clearInterval(dataInterval);
-      // clearInterval(pollingInterval); // TEMPORÄRT AVSTÄNGD
+      clearInterval(pollingInterval);
     };
   }, [connections]);
 

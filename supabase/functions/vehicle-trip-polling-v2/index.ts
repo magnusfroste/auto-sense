@@ -482,7 +482,7 @@ async function getActiveTrips(connectionId: string) {
   return response.ok ? await response.json() : []
 }
 
-// Get user's trip configuration with MUCH higher defaults
+// Get user's trip configuration with realistic defaults for ID5 testing
 async function getUserTripConfig(userId: string) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -498,13 +498,13 @@ async function getUserTripConfig(userId: string) {
   const profiles = profileResponse.ok ? await profileResponse.json() : []
   const profile = profiles.length > 0 ? profiles[0] : {}
 
-  // MUCH more conservative defaults to prevent false positives
+  // Realistic defaults for ID5 testing - balanced for proper trip detection
   return {
-    movementThreshold: profile.trip_movement_threshold_meters || 500, // 500m instead of 100m
-    stationaryTimeout: profile.trip_stationary_timeout_minutes || 5,   // 5min instead of 2min
-    minimumDistance: profile.trip_minimum_distance_meters || 1000,     // 1km instead of 500m
+    movementThreshold: profile.trip_movement_threshold_meters || 200, // 200m - realistic for city driving
+    stationaryTimeout: profile.trip_stationary_timeout_minutes || 3,   // 3min - reasonable stop time
+    minimumDistance: profile.trip_minimum_distance_meters || 500,      // 500m - captures short trips
     maxDurationHours: profile.trip_max_duration_hours || 12,
-    sensitivity: profile.trip_sensitivity_level || 'low'              // Default to low sensitivity
+    sensitivity: profile.trip_sensitivity_level || 'normal'            // Normal sensitivity for balanced detection
   }
 }
 
