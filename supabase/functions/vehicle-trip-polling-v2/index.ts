@@ -411,12 +411,25 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
       return
     }
 
-    // Check for stationary timeout (also more conservative)
+    // Check for stationary timeout - only end if stationary for extended period with minimal distance
     if (!hasMovedSignificantly) {
-      const timeSinceTripStart = (new Date().getTime() - tripStartTime.getTime()) / (1000 * 60)
+      // Calculate time since last movement (more precise than trip start time)
+      const timeSinceLastPoll = lastState?.last_poll_time ? 
+        (new Date().getTime() - new Date(lastState.last_poll_time).getTime()) / (1000 * 60) : 0
       
-      if (timeSinceTripStart >= tripConfig.stationaryTimeout) {
-        console.log(`🏁 Ending trip due to stationary timeout (${timeSinceTripStart.toFixed(1)}min)`)
+      // Only end trip if:
+      // 1. Vehicle has been stationary for longer than timeout
+      // 2. Trip has some meaningful distance (> 1km) 
+      // 3. OR trip has been running for a very long time
+      const tripStartTime = new Date(activeTrip.start_time)
+      const tripDurationMinutes = (new Date().getTime() - tripStartTime.getTime()) / (1000 * 60)
+      const tripDistance = activeTrip.distance_km || 0
+      
+      const shouldEndTrip = timeSinceLastPoll >= tripConfig.stationaryTimeout && 
+                           (tripDistance >= 1.0 || tripDurationMinutes >= 60) // More than 1km OR 1 hour
+      
+      if (shouldEndTrip) {
+        console.log(`🏁 Ending trip due to stationary timeout (${timeSinceLastPoll.toFixed(1)}min since last movement, distance: ${tripDistance}km)`)
         await endTrip(activeTrip, currentLocation, currentOdometer, tripConfig)
         await updateVehicleState(connection.id, {
           last_odometer: currentOdometer,
@@ -427,7 +440,7 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
         })
         return
       } else {
-        console.log(`⏸️ Trip continuing - stationary for ${timeSinceTripStart.toFixed(1)}min (threshold: ${tripConfig.stationaryTimeout}min)`)
+        console.log(`⏸️ Trip continuing - stationary for ${timeSinceLastPoll.toFixed(1)}min (threshold: ${tripConfig.stationaryTimeout}min, distance: ${tripDistance}km)`)
         await updateOngoingTrip(activeTrip, currentLocation, currentOdometer)
       }
     } else {
