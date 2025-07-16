@@ -232,10 +232,80 @@ async function fetchSmartcarData(vehicleId: string, accessToken: string, connect
 }
 
 async function refreshSmartcarToken(connectionId: string): Promise<string | null> {
-  // Implementation for token refresh would go here
-  // For now, return null to indicate refresh failed
-  console.log(`🔄 Token refresh needed for connection ${connectionId}`)
-  return null
+  console.log(`🔄 Attempting token refresh for connection ${connectionId}`)
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  
+  try {
+    // Get connection data for refresh token
+    const connectionResponse = await fetch(`${supabaseUrl}/rest/v1/vehicle_connections?id=eq.${connectionId}&select=refresh_token`, {
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!connectionResponse.ok) {
+      console.error('❌ Failed to fetch connection for token refresh')
+      return null
+    }
+    
+    const connections = await connectionResponse.json()
+    if (connections.length === 0) {
+      console.error('❌ No connection found for token refresh')
+      return null
+    }
+    
+    const refreshToken = connections[0].refresh_token
+    const clientId = Deno.env.get('SMARTCAR_CLIENT_ID')!
+    const clientSecret = Deno.env.get('SMARTCAR_CLIENT_SECRET')!
+    
+    // Call Smartcar token refresh endpoint
+    const tokenResponse = await fetch('https://auth.smartcar.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`
+      },
+      body: `grant_type=refresh_token&refresh_token=${refreshToken}`
+    })
+    
+    if (!tokenResponse.ok) {
+      console.error(`❌ Token refresh failed: ${tokenResponse.status}`)
+      return null
+    }
+    
+    const tokenData = await tokenResponse.json()
+    console.log('✅ Token refreshed successfully')
+    
+    // Update connection with new tokens
+    const updateResponse = await fetch(`${supabaseUrl}/rest/v1/vehicle_connections?id=eq.${connectionId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+        updated_at: new Date().toISOString()
+      })
+    })
+    
+    if (!updateResponse.ok) {
+      console.error('❌ Failed to update connection with new tokens')
+      return null
+    }
+    
+    console.log('🔄 Connection updated with new tokens')
+    return tokenData.access_token
+    
+  } catch (error) {
+    console.error('❌ Token refresh error:', error)
+    return null
+  }
 }
 
 async function getVehicleState(connectionId: string): Promise<VehicleState | null> {
@@ -265,6 +335,9 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
 
   if (!currentOdometer) {
     console.log(`⚠️ No odometer data available, skipping trip analysis`)
+    
+    // Check for stale active trips that need to be ended due to API issues
+    await checkAndEndStaleTrips(connection)
     return
   }
 
@@ -315,15 +388,36 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
   if (hasActiveTrip) {
     const activeTrip = activeTrips[0]
     
+    // Check for trip max duration safety limit
+    const tripStartTime = new Date(activeTrip.start_time)
+    const tripDurationHours = (new Date().getTime() - tripStartTime.getTime()) / (1000 * 60 * 60)
+    
+    if (tripDurationHours >= tripConfig.maxDurationHours) {
+      console.log(`⏰ Trip exceeded max duration (${tripDurationHours.toFixed(1)}h ≥ ${tripConfig.maxDurationHours}h), force ending`)
+      
+      try {
+        await endTrip(activeTrip, currentLocation, currentOdometer, tripConfig, true)
+        console.log(`✅ Trip ${activeTrip.id} force-ended due to max duration`)
+        
+        await updateVehicleState(connection.id, {
+          last_odometer: currentOdometer,
+          last_location: currentLocation,
+          last_poll_time: currentTime,
+          current_trip_id: null,
+          polling_frequency: 120
+        })
+        return
+      } catch (error) {
+        console.error(`❌ Failed to force-end trip:`, error)
+      }
+    }
+    
     // Check if vehicle has been stationary too long
-    // We need to track when the vehicle last moved significantly, not just when we last polled
-    const currentTime = new Date()
-    let minutesSinceLastMovement = 0
+    const currentTimeObj = new Date()
     
     if (!hasMovedSignificantly) {
       // Calculate time since trip started (more reliable for stationary detection)
-      const tripStartTime = new Date(activeTrip.start_time)
-      const timeSinceTripStart = (currentTime.getTime() - tripStartTime.getTime()) / (1000 * 60)
+      const timeSinceTripStart = (currentTimeObj.getTime() - tripStartTime.getTime()) / (1000 * 60)
       
       // Use a simple approach: if the trip has been running for more than 2 minutes 
       // AND no significant movement in this poll, consider ending it
@@ -342,7 +436,7 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
           await updateVehicleState(connection.id, {
             last_odometer: currentOdometer,
             last_location: currentLocation,
-            last_poll_time: currentTime.toISOString(),
+            last_poll_time: currentTime,
             current_trip_id: null,
             polling_frequency: 120 // Back to normal polling
           })
@@ -545,6 +639,42 @@ async function updateOngoingTrip(trip: any, location: any, odometer: number) {
   }
 
   console.log(`✅ Trip updated - Distance: ${newDistance}km, Duration: ${newDuration}min`)
+}
+
+// Check for stale active trips that need to be ended due to API issues
+async function checkAndEndStaleTrips(connection: any) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  
+  // Get user's trip configuration
+  const tripConfig = await getUserTripConfig(connection.user_id)
+  
+  // Find active trips that are older than max duration
+  const maxDurationMs = tripConfig.maxDurationHours * 60 * 60 * 1000
+  const cutoffTime = new Date(Date.now() - maxDurationMs).toISOString()
+  
+  const staleTripsResponse = await fetch(`${supabaseUrl}/rest/v1/sense_trips?vehicle_connection_id=eq.${connection.id}&trip_status=eq.active&start_time=lt.${cutoffTime}&select=*`, {
+    headers: {
+      'Authorization': `Bearer ${supabaseServiceKey}`,
+      'apikey': supabaseServiceKey,
+      'Content-Type': 'application/json'
+    }
+  })
+  
+  if (staleTripsResponse.ok) {
+    const staleTrips = await staleTripsResponse.json()
+    
+    for (const trip of staleTrips) {
+      console.log(`🧹 Force-ending stale trip ${trip.id} (started: ${trip.start_time})`)
+      
+      try {
+        await endTrip(trip, trip.start_location, null, tripConfig, true)
+        console.log(`✅ Stale trip ${trip.id} ended successfully`)
+      } catch (error) {
+        console.error(`❌ Failed to end stale trip ${trip.id}:`, error)
+      }
+    }
+  }
 }
 
 async function endTrip(trip: any, location: any, odometer: number, tripConfig: any, forced = false) {
