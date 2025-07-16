@@ -34,34 +34,40 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const [mapError, setMapError] = useState<string | null>(null);
   const { token, loading, error } = useMapbox();
 
-  // Initialize map when token is available (only once)
+  // Wait for valid position data before initializing map
   useEffect(() => {
     console.log('🗺️ MapComponent init effect triggered:', { 
       hasToken: !!token, 
       hasContainer: !!mapContainer.current, 
-      hasMap: !!map.current
+      hasMap: !!map.current,
+      hasValidLocation: isValidLocation(currentLocation) || isValidLocation(startLocation)
     });
 
-    if (!token || !mapContainer.current || map.current) return;
+    // Wait for both token and valid position data
+    const validCurrentLocation = isValidLocation(currentLocation) ? currentLocation : null;
+    const validStartLocation = isValidLocation(startLocation) ? startLocation : null;
+    const centerLocation = validCurrentLocation || validStartLocation;
+
+    if (!token || !mapContainer.current || map.current || !centerLocation) return;
 
     try {
-      console.log('🗺️ Initializing Mapbox map...');
+      console.log('🗺️ Initializing Mapbox map with real position data...');
       mapboxgl.accessToken = token;
       
-      // Default to Stockholm - we'll update center with markers/route later
-      const defaultCenter: [number, number] = [18.0686, 59.3293]; // Stockholm
+      // Start with actual location data instead of Stockholm
+      const actualCenter: [number, number] = [centerLocation.lng, centerLocation.lat];
 
-      console.log('🗺️ Map center:', defaultCenter);
+      console.log('🗺️ Map center (real position):', actualCenter);
 
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v12',
-        center: defaultCenter,
-        zoom: 10, // Start zoomed out, will adjust based on content
+        center: actualCenter,
+        zoom: 15, // Start zoomed in since we have exact location
         pitch: 0,
       });
 
-      console.log('✅ Mapbox map initialized successfully');
+      console.log('✅ Mapbox map initialized successfully with real position');
 
       // Add navigation controls
       if (showNavigation) {
@@ -103,7 +109,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         setMapLoaded(false);
       }
     };
-  }, [token, showNavigation]); // Only depend on token and showNavigation, NOT currentLocation
+  }, [token, showNavigation, currentLocation, startLocation]); // Include locations to wait for valid data
 
   // Helper function to extract coordinates from route data
   const getRouteCoordinates = (routeData: any): [number, number][] => {
@@ -254,13 +260,18 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     }
   }, [mapLoaded, currentLocation, startLocation, route]);
 
-  if (loading) {
-    console.log('🗺️ MapComponent is loading...');
+  // Check if we're waiting for position data
+  const hasValidLocation = isValidLocation(currentLocation) || isValidLocation(startLocation);
+  
+  if (loading || (!hasValidLocation && token)) {
+    console.log('🗺️ MapComponent is loading or waiting for position data...');
     return (
       <Card className={`${className} ${height} flex items-center justify-center`}>
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Laddar karta...</p>
+          <p className="text-sm text-muted-foreground">
+            {loading ? 'Laddar karta...' : 'Väntar på positionsdata...'}
+          </p>
         </div>
       </Card>
     );
