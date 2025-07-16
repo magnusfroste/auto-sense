@@ -156,7 +156,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     );
   };
 
-  // Update markers when locations change
+  // Update markers when locations change - but only after map and style are loaded
   useEffect(() => {
     console.log('🗺️ MapComponent markers effect triggered:', { 
       mapLoaded, 
@@ -166,10 +166,15 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       currentLocationValid: isValidLocation(currentLocation),
       startLocationValid: isValidLocation(startLocation),
       currentLocationData: currentLocation,
-      startLocationData: startLocation
+      startLocationData: startLocation,
+      mapStyleLoaded: map.current?.isStyleLoaded()
     });
     
-    if (!map.current || !mapLoaded) return;
+    // Wait for both map loaded AND style loaded before adding sources
+    if (!map.current || !mapLoaded || !map.current.isStyleLoaded()) {
+      console.log('⏳ Waiting for map and style to load...');
+      return;
+    }
 
     // Clear existing markers and sources
     if (map.current.getSource('route')) {
