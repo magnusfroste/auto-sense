@@ -31,14 +31,14 @@ export default function TripActiveSimple(): JSX.Element {
 
   useEffect(() => {
     fetchVehicleState();
-    triggerPolling(); // Trigga första polling direkt
+    // triggerPolling(); // TEMPORÄRT AVSTÄNGD - trigga första polling direkt
     
     const dataInterval = setInterval(fetchVehicleState, 5000); // Uppdatera UI var 5:e sekund
-    const pollingInterval = setInterval(triggerPolling, 30000); // Trigga polling var 30:e sekund
+    // const pollingInterval = setInterval(triggerPolling, 30000); // TEMPORÄRT AVSTÄNGD - Trigga polling var 30:e sekund
     
     return () => {
       clearInterval(dataInterval);
-      clearInterval(pollingInterval);
+      // clearInterval(pollingInterval); // TEMPORÄRT AVSTÄNGD
     };
   }, [connections]);
 
@@ -84,7 +84,7 @@ export default function TripActiveSimple(): JSX.Element {
 
     try {
       console.log('🔄 Auto-triggering vehicle polling...', new Date().toLocaleTimeString());
-      const { data, error } = await supabase.functions.invoke('vehicle-trip-polling', {
+      const { data, error } = await supabase.functions.invoke('vehicle-trip-polling-v2', {
         body: { 
           connectionId: connections[0].id,
           action: 'poll_single',

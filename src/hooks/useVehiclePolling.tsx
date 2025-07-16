@@ -59,7 +59,7 @@ export const useVehiclePolling = () => {
   // Start polling for a specific vehicle
   const startVehiclePolling = useCallback(async (connectionId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('vehicle-trip-polling', {
+      const { data, error } = await supabase.functions.invoke('vehicle-trip-polling-v2', {
         body: { connectionId }
       });
 
@@ -88,7 +88,7 @@ export const useVehiclePolling = () => {
   const startAllVehiclePolling = useCallback(async () => {
     setIsPolling(true);
     try {
-      const { data, error } = await supabase.functions.invoke('vehicle-trip-polling', {
+      const { data, error } = await supabase.functions.invoke('vehicle-trip-polling-v2', {
         body: {} // Empty body means poll all vehicles
       });
 

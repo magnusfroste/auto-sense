@@ -239,7 +239,7 @@ export const useVehicleConnections = () => {
         }
 
         // Start vehicle polling for all connected vehicles
-        const { error: pollingError } = await supabase.functions.invoke('vehicle-trip-polling', {
+        const { error: pollingError } = await supabase.functions.invoke('vehicle-trip-polling-v2', {
           body: {} // Empty body means poll all vehicles
         });
 

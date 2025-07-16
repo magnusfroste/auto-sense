@@ -17,7 +17,7 @@ export const TripDebugPanel = () => {
     try {
       console.log('🔧 Manually triggering vehicle polling...');
       
-      const { data, error } = await supabase.functions.invoke('vehicle-trip-polling', {
+      const { data, error } = await supabase.functions.invoke('vehicle-trip-polling-v2', {
         body: {}
       });
 
