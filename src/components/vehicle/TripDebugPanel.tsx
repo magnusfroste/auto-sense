@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ export const TripDebugPanel = () => {
   const [stateHistory, setStateHistory] = useState<VehicleStateHistory[]>([]);
   const { connections } = useVehicleConnections();
   const { toast } = useToast();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchVehicleStateHistory = async () => {
     if (connections.length === 0) {
@@ -46,20 +47,25 @@ export const TripDebugPanel = () => {
           .filter(state => state.odometer_km !== null)
           .map((state, index, array) => {
             const odometer = state.odometer_km || 0;
-            const prevOdometer = array[index + 1]?.odometer_km || odometer;
-            const delta = Math.abs(odometer - prevOdometer) * 1000; // Convert km to meters
+            const nextOdometer = array[index - 1]?.odometer_km || odometer;
+            const delta = Math.abs(odometer - nextOdometer) * 1000; // Convert km to meters
             
             return {
               timestamp: state.created_at,
               odometer: odometer,
-              delta: index === array.length - 1 ? 0 : delta, // No delta for the oldest entry
+              delta: index === 0 ? 0 : delta, // No delta for the newest entry
               poll_time: state.poll_time || state.created_at
             };
-          })
-          .reverse(); // Show oldest first for chronological order
+          });
 
-        setStateHistory(history);
+        setStateHistory(history.reverse()); // Show oldest first, newest last
         console.log('🔧 Debug: Processed history:', history.length, 'entries');
+        // Auto-scroll to bottom to show newest entries
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        }, 100);
       } else {
         console.log('🔧 Debug: No history data found');
       }
@@ -187,7 +193,7 @@ export const TripDebugPanel = () => {
               <Clock className="mr-2 h-4 w-4" />
               Odometer Data Stream (varje API-anrop = ny rad)
             </div>
-            <div className="max-h-80 overflow-auto border rounded">
+            <div ref={scrollRef} className="max-h-80 overflow-auto border rounded">
               <Table>
                 <TableHeader>
                   <TableRow>
