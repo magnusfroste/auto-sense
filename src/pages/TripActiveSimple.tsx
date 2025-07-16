@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -60,7 +60,7 @@ export default function TripActiveSimple(): JSX.Element {
       if (data) {
         // Parse the location data correctly
         const location = data.last_location as any;
-        setVehicleState({
+        const newState = {
           id: data.id,
           last_odometer: data.last_odometer,
           last_location: location ? {
@@ -69,6 +69,18 @@ export default function TripActiveSimple(): JSX.Element {
           } : null,
           last_poll_time: data.last_poll_time,
           polling_frequency: data.polling_frequency
+        };
+
+        // Only update state if data has actually changed
+        setVehicleState(prevState => {
+          if (!prevState) return newState;
+          
+          const hasChanged = 
+            prevState.last_odometer !== newState.last_odometer ||
+            prevState.last_poll_time !== newState.last_poll_time ||
+            JSON.stringify(prevState.last_location) !== JSON.stringify(newState.last_location);
+          
+          return hasChanged ? newState : prevState;
         });
       }
       setLastUpdate(new Date());
@@ -329,18 +341,18 @@ export default function TripActiveSimple(): JSX.Element {
           </CardHeader>
           <CardContent>
             <MapComponent
-              currentLocation={{
+              currentLocation={useMemo(() => vehicleState?.last_location ? {
                 lat: vehicleState.last_location.latitude,
                 lng: vehicleState.last_location.longitude
-              }}
-              startLocation={activeTrip?.start_location ? {
+              } : undefined, [vehicleState?.last_location?.latitude, vehicleState?.last_location?.longitude])}
+              startLocation={useMemo(() => activeTrip?.start_location ? {
                 lat: activeTrip.start_location.latitude,
                 lng: activeTrip.start_location.longitude
-              } : undefined}
-              route={activeTrip?.route_data ? {
+              } : undefined, [activeTrip?.start_location?.latitude, activeTrip?.start_location?.longitude])}
+              route={useMemo(() => activeTrip?.route_data ? {
                 type: 'LineString',
                 coordinates: activeTrip.route_data
-              } : undefined}
+              } : undefined, [activeTrip?.route_data])}
               height="h-96"
               showNavigation={true}
             />
