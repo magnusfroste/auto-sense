@@ -31,33 +31,37 @@ export const TripDebugPanel = () => {
     
     try {
       const { data, error } = await supabase
-        .from('vehicle_states')
-        .select('last_odometer, last_poll_time, updated_at')
+        .from('vehicle_data_history')
+        .select('odometer_km, poll_time, created_at')
         .eq('connection_id', connections[0].id)
-        .not('last_odometer', 'is', null)
-        .order('updated_at', { ascending: false })
-        .limit(100); // Show more entries to see the full data stream
+        .not('odometer_km', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(50); // Show last 50 data points
 
       if (error) throw error;
 
       if (data && data.length > 0) {
+        console.log('🔧 Debug: Got history data:', data.length, 'entries');
         const history: VehicleStateHistory[] = data
-          .filter(state => state.last_odometer !== null)
+          .filter(state => state.odometer_km !== null)
           .map((state, index, array) => {
-            const odometer = state.last_odometer || 0;
-            const prevOdometer = array[index + 1]?.last_odometer || odometer;
+            const odometer = state.odometer_km || 0;
+            const prevOdometer = array[index + 1]?.odometer_km || odometer;
             const delta = Math.abs(odometer - prevOdometer) * 1000; // Convert km to meters
             
             return {
-              timestamp: state.updated_at,
+              timestamp: state.created_at,
               odometer: odometer,
               delta: index === array.length - 1 ? 0 : delta, // No delta for the oldest entry
-              poll_time: state.last_poll_time || state.updated_at
+              poll_time: state.poll_time || state.created_at
             };
           })
           .reverse(); // Show oldest first for chronological order
 
         setStateHistory(history);
+        console.log('🔧 Debug: Processed history:', history.length, 'entries');
+      } else {
+        console.log('🔧 Debug: No history data found');
       }
     } catch (error) {
       console.error('Error fetching vehicle state history:', error);
@@ -68,15 +72,15 @@ export const TripDebugPanel = () => {
     fetchVehicleStateHistory();
     const interval = setInterval(fetchVehicleStateHistory, 5000); // Refresh every 5 seconds for more real-time feel
     
-    // Set up real-time subscription for vehicle_states updates
+    // Set up real-time subscription for vehicle_data_history updates
     const channel = supabase
-      .channel('vehicle-states-changes')
+      .channel('vehicle-data-history-changes')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
-          table: 'vehicle_states'
+          table: 'vehicle_data_history'
         },
         (payload) => {
           console.log('🔧 Debug: Vehicle state updated in real-time:', payload);

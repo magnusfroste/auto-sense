@@ -478,6 +478,9 @@ async function analyzeTripState(connection: any, vehicleData: any, lastState: Ve
     current_trip_id: currentTripId,
     polling_frequency: pollingFrequency
   })
+
+  // Also log to history table for debugging
+  await logVehicleDataHistory(connection.id, currentOdometer, currentLocation, currentTime)
 }
 
 async function getActiveTrips(connectionId: string) {
@@ -709,5 +712,32 @@ async function updateVehicleState(connectionId: string, state: any) {
         })
       })
     }
+  }
+}
+
+async function logVehicleDataHistory(connectionId: string, odometer: number, location: any, pollTime: string) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/vehicle_data_history`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        connection_id: connectionId,
+        odometer_km: odometer,
+        location: location,
+        poll_time: pollTime,
+        created_at: new Date().toISOString()
+      })
+    })
+    
+    console.log(`📊 Logged data point: ${odometer}km at ${pollTime}`)
+  } catch (error) {
+    console.error('❌ Failed to log vehicle data history:', error)
   }
 }
